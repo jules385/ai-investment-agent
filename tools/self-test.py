@@ -224,6 +224,44 @@ def gate3_mcp_connectivity():
     return all_pass
 
 
+def gate5_mcp_agent_compatibility(test_symbol="002202"):
+    """MCP 子 Agent 兼容性说明 + Server 语法检查"""
+    print("\n" + "=" * 60)
+    print("  第五关：MCP 子 Agent 兼容性检查")
+    print("=" * 60)
+
+    print("""
+  ⚠️  MCP stdio 服务器由 Claude Code 主会话启动。
+      子 Agent 能否继承 MCP 取决于 Claude Code 版本。
+
+  手动验证（在 Claude Code 中执行）：
+      "用 Subagent 调用 tech-analysis MCP 的 compute_ma，
+       获取 {} 的日线均线"
+
+  预期：
+      ✅ 返回 MA5/MA10/MA20 数值 → 正常
+      ❌ Subagent 用 WebSearch 替代 → MCP 未继承（降级可用）
+""".format(test_symbol))
+
+    import subprocess
+    server_dir = REPO_DIR / "mcp-servers"
+    ok = True
+    for name in ["finance-data", "tech-analysis"]:
+        server_py = server_dir / name / "server.py"
+        result = subprocess.run(
+            [sys.executable, "-c",
+             "compile(open(r'{}', encoding='utf-8').read(), 'server.py', 'exec')".format(server_py)],
+            capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            print(f"  ✅ {name} server.py 语法通过")
+        else:
+            print(f"  ❌ {name} server.py 语法错误: {result.stderr.strip()[:100]}")
+            ok = False
+
+    return ok  # 此关仅作信息提示
+
+
 # ── 第四关：工具计数检查 ─────────────────
 
 def gate4_tool_coverage():
@@ -274,6 +312,7 @@ def main():
         "Gate 2: Skill 文件": gate2_skill_files(),
         "Gate 3: MCP 连通性": gate3_mcp_connectivity(),
         "Gate 4: 工具覆盖": gate4_tool_coverage(),
+        "Gate 5: MCP 子Agent兼容": gate5_mcp_agent_compatibility(TEST_SYMBOL),
     }
 
     # ── Summary ──

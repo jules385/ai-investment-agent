@@ -195,20 +195,30 @@ ai-investment-agent/
 
 ### 输入分析指令后，Chief 分析师没有按工作流执行
 
-**症状**：输入"对XX进行初次覆盖"，Claude 没有 spawn 4 个 Subagent，而是自己搜索数据、自己写报告。
+**症状**：输入 `/analyze-initial`，Claude 没有 spawn 4 个 Subagent，而是自己搜索数据、自己写报告。
 
 **诊断**：
 
-1. **Chief Skill 是否加载？** — 如果 Claude 的回复开头没有 `🔴 总分析师已激活`，说明 Skill 没被触发。检查 `~/.claude/skills/analysts/analyst-chief/SKILL.md` 是否存在。
-2. **MCP Server 是否存活？** — 运行 `python tools/self-test.py`，确保 4/4 通过。
-3. **Skill 是否安装到正确路径？** — `~/.claude/skills/analysts/` 下应有 8 个子目录，每个含 `SKILL.md`。
+1. **Chief Skill 是否加载？** — 如果回复开头没有 `🔴 总分析师已激活`，说明 Skill 未触发。检查 `~/.claude/skills/analysts/analyst-chief/SKILL.md`。
+2. **MCP Server 是否存活？** — 运行 `python tools/self-test.py`，确保 5/5 通过。
+3. **子 Agent 能否访问 MCP？** — `self-test.py` 的 Gate 5 有手动验证指令。如果子 Agent 用 WebSearch 代替了 MCP，属于已知限制（取决于 Claude Code 版本），降级可用。
 
 **快速修复**：
 ```bash
-python install.py          # 重新安装所有 Skill
-python tools/self-test.py  # 验证安装
+python install.py          # 重新安装所有 Skill + 生成项目级 .mcp.json
+python tools/self-test.py  # 验证安装（预期 5/5）
 ```
 重启 Claude Code 后重试。
+
+### MCP Server 启动失败
+
+**症状**：`self-test.py` Gate 1/3 报错，或 Claude 提示 MCP 工具不可用。
+
+**诊断**：
+
+1. **`.mcp.json` 是否在项目根目录？** — `install.py` v0.1.0+ 会同时写入项目根目录（优先）和 `~/.mcp.json`（兜底）。
+2. **Python 依赖是否完整？** — 运行 `pip install -r requirements.txt`。`install.py` 会检查核心依赖。
+3. **`ta` 包是否为空壳？** — `pip show ta` 查看版本。如果 wheel 仅 1-2 KB，说明是空壳。修复：`pip uninstall ta -y && pip install "ta>=0.10.0,<0.12.0"`。
 
 ## 免责声明
 
