@@ -86,12 +86,34 @@ def install_commands():
         print(f"  共安装 {count} 个命令")
 
 
+def check_dependencies():
+    """检查核心 Python 依赖是否已安装"""
+    print("\n🔍 检查 Python 依赖...")
+    deps = {"akshare": "akshare>=1.18", "mcp": "mcp>=1.27", "fastmcp": "fastmcp>=3.4",
+            "pandas": "pandas>=2.0", "numpy": "numpy>=1.24", "ta": "ta>=0.11"}
+    missing = []
+    for mod, spec in deps.items():
+        try:
+            __import__(mod)
+            print(f"  ✅ {mod}")
+        except ImportError:
+            print(f"  ❌ {mod} — {spec}")
+            missing.append(mod)
+    if missing:
+        print(f"\n❌ 缺少依赖：{', '.join(missing)}")
+        print(f"   请先运行：pip install -r {REPO_DIR / 'requirements.txt'}")
+        return False
+    return True
+
+
 def install_mcp_config():
-    """生成 ~/.mcp.json，替换占位符，备份旧配置"""
+    """生成项目级 .mcp.json（优先）和 ~/.mcp.json（兜底），替换占位符"""
+    if not check_dependencies():
+        sys.exit(1)
+
     print("\n⚙️  生成 MCP 配置...")
 
     python_path = sys.executable
-    # 使用正斜杠以确保跨平台兼容（Python 在 Windows 上也接受 /）
     repo_path = REPO_DIR.as_posix()
 
     print(f"  Python: {python_path}")
@@ -101,20 +123,26 @@ def install_mcp_config():
     config = template_content.replace("{{PYTHON_PATH}}", python_path)
     config = config.replace("{{REPO_PATH}}", repo_path)
 
-    if MCP_DST.exists():
-        # 备份旧配置
-        backup_path = MCP_DST.with_suffix(".json.install-backup")
-        print(f"  ⚠️  {MCP_DST} 已存在")
+    # 🔴 关键修复：写入两个位置
+    # 1. 项目根目录（Claude Code 优先读取）
+    # 2. ~/.mcp.json（全局兜底）
+    targets = {
+        "项目根目录（Claude Code 优先）": REPO_DIR / ".mcp.json",
+        "用户主目录（全局兜底）": MCP_DST,
+    }
 
-        if not confirm("  是否覆盖？(旧配置将备份为 .mcp.json.install-backup)"):
-            print("  ⏭️  跳过 MCP 配置")
-            return
-
-        shutil.copy2(MCP_DST, backup_path)
-        print(f"  📁 旧配置已备份到 {backup_path}")
-
-    MCP_DST.write_text(config, encoding='utf-8')
-    print(f"  ✅ 已生成 {MCP_DST}")
+    for label, target in targets.items():
+        if target.exists() and target == MCP_DST:
+            backup_path = target.with_suffix(".json.install-backup")
+            print(f"  ⚠️  {target} 已存在")
+            if confirm("  是否覆盖？(旧配置将备份)"):
+                shutil.copy2(target, backup_path)
+                print(f"  📁 旧配置已备份到 {backup_path}")
+            else:
+                print(f"  ⏭️  跳过 {label}")
+                continue
+        target.write_text(config, encoding='utf-8')
+        print(f"  ✅ 已生成 {target} ({label})")
 
 
 def print_next_steps():
