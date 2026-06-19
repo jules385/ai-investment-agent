@@ -128,10 +128,12 @@ python tools/self-test.py
 
 ### 开始使用
 
+> 🔴 **必须使用斜杠命令**（`/analyze-initial`），不要输入自然语言。斜杠命令是 Claude Code 的确定性加载机制——只要命令文件存在，就一定会被加载。自然语言依赖 Skill 的触发词匹配，可能失败。
+
 ```bash
 claude                                                    # CLI 用户启动
-# 或在桌面版/IDE 中直接操作
 
+# 🔴 使用斜杠命令（推荐，100% 可靠）：
 /analyze-initial 002414 高德红外                           # 初次覆盖
 /analyze-weekly                                           # 周度跟踪
 /analyze-monthly  002414                                  # 月度跟踪
@@ -139,7 +141,13 @@ claude                                                    # CLI 用户启动
 /analyze-annual 002414                                    # 年度战略复盘
 /analyze-portfolio-weekly                                 # 组合批量周度跟踪
 /beautify-report 002414-高德红外                           # 生成 HTML 报告
+/help                                                     # 查看所有可用命令
+
+# 自然语言也可用（备选，可能不稳定）：
+# "对高德红外进行初次覆盖"
 ```
+
+**首次使用验证**：输入 `/analyze-initial` 后，如果 Claude 的回复开头出现 `🔴 总分析师已激活`，说明一切正常。如果没出现 → 运行 `python install.py` 重装。
 
 ## 目录结构
 
