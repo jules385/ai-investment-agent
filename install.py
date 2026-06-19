@@ -90,11 +90,14 @@ def check_dependencies():
     """检查核心 Python 依赖是否已安装"""
     print("\n🔍 检查 Python 依赖...")
     deps = {"akshare": "akshare>=1.18", "mcp": "mcp>=1.27", "fastmcp": "fastmcp>=3.4",
-            "pandas": "pandas>=2.0", "numpy": "numpy>=1.24", "ta": "ta>=0.11"}
+            "pandas": "pandas>=2.0", "numpy": "numpy>=1.24", "ta": "ta>=0.10,<0.12"}
     missing = []
     for mod, spec in deps.items():
         try:
             __import__(mod)
+            if mod == "ta":
+                from ta.trend import MACD
+                from ta.momentum import RSIIndicator
             print(f"  ✅ {mod}")
         except ImportError:
             print(f"  ❌ {mod} — {spec}")
