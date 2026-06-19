@@ -87,6 +87,8 @@ python install.py
 /analyze-weekly                    # 周度跟踪（遍历白名单）
 /analyze-monthly  002414           # 月度跟踪（指定标的）
 /analyze-quarterly                 # 季度跟踪
+/analyze-annual 002414             # 年度战略复盘
+/analyze-portfolio-weekly          # 组合批量周度跟踪
 /beautify-report 002414-高德红外    # 生成 HTML 报告
 ```
 
@@ -98,16 +100,17 @@ ai-investment-agent/
 ├── install.py                 ← 一键安装
 ├── requirements.txt
 │
-├── skills/analysts/           ← 7 个 AI 角色 Skill
-│   ├── analyst-chief/         组
-│   ├── analyst-fundamental/   协
-│   ├── analyst-chip-flow/     分
-│   ├── analyst-technical/     析
-│   ├── analyst-sentiment/     师
-│   ├── analyst-data-qa/       QA
-│   └── analyst-beautifier/    美化
+├── skills/analysts/           ← 8 个 AI 角色 Skill
+│   ├── analyst-chief/         编排
+│   ├── analyst-fundamental/   基本面
+│   ├── analyst-chip-flow/     筹码面
+│   ├── analyst-technical/     技术面
+│   ├── analyst-sentiment/     情绪面
+│   ├── analyst-data-qa/       数据QA
+│   ├── analyst-beautifier/    美化
+│   └── analyst-portfolio-mgr/ 组合管理
 │
-├── commands/                  ← 5 条斜杠命令
+├── commands/                  ← 7 条斜杠命令
 ├── mcp-servers/               ← 2 个 MCP 数据服务
 │   ├── finance-data/         基本面 + 资金流 + 股东
 │   └── tech-analysis/        技术指标 (ta 库)
@@ -126,9 +129,10 @@ ai-investment-agent/
 | 周期 | 基本面 | 筹码面 | 技术面 | 情绪面 |
 |------|--------|--------|--------|--------|
 | 初次覆盖 | 深度全流程 | 深度五步 | 深度全指标 | 深度温度计 |
-| 周度跟踪 | 边际监控 | 快速扫描 | 日线+60min | 快速扫描 |
-| 月度跟踪 | 边际+财务 | 深度五步 | 中期支撑阻力 | 深度温度计 |
-| 季度跟踪 | 深度全流程 | 深度五步 | 深度全指标 | 深度温度计 |
+| 周度跟踪 | 边际监控 | 快速扫描 | 日线+60min | 温度更新 |
+| 月度跟踪 | 4周趋势提炼 | 趋势汇总 | 周线+月线 | 4周温度曲线 |
+| 季度跟踪 | 三表联动分析 | 简略 | 简略 | 简略 |
+| 年度跟踪 | 战略复盘+行业重评 | 全年回顾 | 全年信号审计 | 年度周期定位 |
 
 ## 免责声明
 

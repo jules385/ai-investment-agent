@@ -7,9 +7,10 @@
 ```
 workspace/
 ├── reports/
-│   ├── 白名单.md           ← 当前覆盖标的及评级
-│   ├── 决策日志.md          ← 所有交易/覆盖决策记录
-│   └── stocks/             ← 按标的归档
+│   ├── 持仓组合.md           ← 当前持仓（持股数+平均成本，用户手动维护）
+│   ├── 白名单组合.md          ← 覆盖标的及评级（用户手动维护）
+│   ├── 黑名单组合.md          ← 排除标的（用户手动维护）
+│   └── stocks/             ← 按标的归档（研究产出，自动生成）
 │       └── [代码]-[名称]/
 │           ├── 01-初次覆盖/
 │           ├── 02-周度跟踪/
@@ -17,9 +18,9 @@ workspace/
 │           ├── 04-季度跟踪/
 │           ├── 05-半年跟踪/
 │           ├── 06-年度跟踪/
-│           └── data/        ← 关键指标 CSV 序列
+│           └── data/        ← 财务数据 CSV
 ├── tools/
-│   └── md-to-html.py        ← 报告美化工具
+│   └── md-to-html.py       ← 报告美化工具
 └── .claude/
     └── settings.json        ← Claude Code 配置 (含API Key，勿提交Git)
 ```
@@ -28,6 +29,7 @@ workspace/
 
 1. 复制此模板到你的工作目录
 2. 配置 `.claude/settings.json`（参考 `.claude/settings.json.template`）
-3. 在 `reports/白名单.md` 中添加你的覆盖标的
-4. 使用 `/analyze-initial [代码] [名称]` 开始初次覆盖
-5. 完成后使用 `/beautify-report [代码]-[名称]` 生成 HTML 报告
+3. 在 `reports/白名单组合.md` 中添加覆盖标的
+4. 在 `reports/持仓组合.md` 中记录实际持仓
+5. 使用 `/analyze-initial [代码] [名称]` 开始初次覆盖
+6. 完成后使用 `/beautify-report [代码]-[名称]` 生成 HTML 报告
