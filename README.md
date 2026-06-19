@@ -183,6 +183,25 @@ ai-investment-agent/
 | 季度跟踪 | 三表联动分析 | 简略 | 简略 | 简略 |
 | 年度跟踪 | 战略复盘+行业重评 | 全年回顾 | 全年信号审计 | 年度周期定位 |
 
+## 常见问题
+
+### 输入分析指令后，Chief 分析师没有按工作流执行
+
+**症状**：输入"对XX进行初次覆盖"，Claude 没有 spawn 4 个 Subagent，而是自己搜索数据、自己写报告。
+
+**诊断**：
+
+1. **Chief Skill 是否加载？** — 如果 Claude 的回复开头没有 `🔴 总分析师已激活`，说明 Skill 没被触发。检查 `~/.claude/skills/analysts/analyst-chief/SKILL.md` 是否存在。
+2. **MCP Server 是否存活？** — 运行 `python tools/self-test.py`，确保 4/4 通过。
+3. **Skill 是否安装到正确路径？** — `~/.claude/skills/analysts/` 下应有 8 个子目录，每个含 `SKILL.md`。
+
+**快速修复**：
+```bash
+python install.py          # 重新安装所有 Skill
+python tools/self-test.py  # 验证安装
+```
+重启 Claude Code 后重试。
+
 ## 免责声明
 
 **本系统仅供学习研究参考，不构成任何投资建议。** AI 生成的分析结果可能存在错误或遗漏，使用者应独立判断并承担投资风险。投资有风险，入市需谨慎。
