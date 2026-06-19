@@ -122,7 +122,8 @@ def gate2_skill_files():
     all_pass = True
     expected_skills = {
         "analyst-chief", "analyst-fundamental", "analyst-chip-flow",
-        "analyst-technical", "analyst-sentiment", "analyst-data-qa", "analyst-beautifier"
+        "analyst-technical", "analyst-sentiment", "analyst-data-qa",
+        "analyst-beautifier", "analyst-portfolio-manager"
     }
 
     # 2.1 Check all skills exist in the repo (source of truth)
@@ -143,7 +144,7 @@ def gate2_skill_files():
     # 2.2 Check for data source priority rules (skip non-data roles)
     priority_keywords = ["数据源优先级"]
     lock_keywords = ["角色锁定", "独立 Subagent"]
-    skip_priority_check = {"analyst-beautifier", "analyst-chief"}
+    skip_priority_check = {"analyst-beautifier", "analyst-chief", "analyst-portfolio-manager"}
 
     for name in sorted(existing):
         skill_md = repo_skills_dir / name / "SKILL.md"
@@ -156,7 +157,7 @@ def gate2_skill_files():
             warn(f"{name} 缺少角色锁定指令")
 
     # 2.3 Check commands (repo or ~/.claude/)
-    for cmd_name in ["analyze-initial", "analyze-weekly", "analyze-monthly", "analyze-quarterly", "beautify-report"]:
+    for cmd_name in ["analyze-initial", "analyze-weekly", "analyze-monthly", "analyze-quarterly", "analyze-annual", "analyze-portfolio-weekly", "beautify-report", "help"]:
         cmd_file = COMMANDS_DIR / f"{cmd_name}.md"
         if not cmd_file.exists():
             cmd_file = REPO_DIR / "commands" / f"{cmd_name}.md"
