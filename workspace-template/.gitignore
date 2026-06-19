@@ -1,0 +1,15 @@
+# 报告目录
+reports/stocks/*
+!reports/stocks/.gitkeep
+
+# 用户配置（含密钥）
+.claude/settings.json
+.claude/settings.local.json
+
+# MCP 配置（由 install.py 生成）
+.mcp.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo

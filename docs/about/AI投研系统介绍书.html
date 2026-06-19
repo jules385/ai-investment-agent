@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A股二级投研 AI Agent 系统 — 项目介绍</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d28;
+    --border: #2a2d3a;
+    --text: #c9d1d9;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d2991d;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --orange: #f0883e;
+    --cyan: #39d2c0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  /* Hero */
+  .hero {
+    text-align: center;
+    padding: 80px 0 60px;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero h1 {
+    font-size: 2.6rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 16px;
+  }
+  .hero .subtitle {
+    font-size: 1.15rem;
+    color: var(--muted);
+    max-width: 650px;
+    margin: 0 auto 32px;
+  }
+  .hero .badges {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .badge {
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--card);
+  }
+  .badge.green { border-color: #238636; color: var(--green); }
+  .badge.blue  { border-color: #1f6feb; color: var(--accent); }
+  .badge.purple { border-color: #8250df; color: var(--purple); }
+
+  /* Sections */
+  section { padding: 64px 0; }
+  section + section { border-top: 1px solid var(--border); }
+  h2 {
+    font-size: 1.7rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #f0f6fc;
+  }
+  .section-desc {
+    color: var(--muted);
+    margin-bottom: 40px;
+    font-size: 1.02rem;
+  }
+
+  /* Architecture Diagram */
+  .arch-diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+  }
+  .arch-row {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .arch-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    text-align: center;
+    min-width: 120px;
+  }
+  .arch-box.label { border-style: dashed; min-width: 80px; }
+  .arch-box h4 { font-size: 0.95rem; margin-bottom: 4px; }
+  .arch-box p { font-size: 0.78rem; color: var(--muted); }
+  .arch-box.accent { border-color: var(--accent); }
+  .arch-box.green  { border-color: var(--green); }
+  .arch-box.purple { border-color: var(--purple); }
+  .arch-box.orange { border-color: var(--orange); }
+  .arch-box.cyan   { border-color: var(--cyan); }
+  .arch-arrow {
+    color: var(--muted);
+    font-size: 1.4rem;
+    text-align: center;
+  }
+
+  /* Analyst Cards */
+  .analyst-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+  }
+  .analyst-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .analyst-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 3px;
+  }
+  .analyst-card.fund::before  { background: var(--accent); }
+  .analyst-card.sent::before  { background: var(--purple); }
+  .analyst-card.chip::before  { background: var(--orange); }
+  .analyst-card.tech::before  { background: var(--green); }
+  .analyst-card.chief::before { background: linear-gradient(90deg, var(--accent), var(--purple), var(--orange), var(--green)); }
+  .analyst-card .icon {
+    font-size: 2.2rem;
+    margin-bottom: 12px;
+  }
+  .analyst-card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 6px;
+    color: #f0f6fc;
+  }
+  .analyst-card .role {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .analyst-card .question {
+    font-size: 0.88rem;
+    font-style: italic;
+    color: var(--muted);
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 6px;
+    border-left: 2px solid var(--border);
+  }
+  .analyst-card ul {
+    list-style: none;
+    font-size: 0.85rem;
+  }
+  .analyst-card ul li {
+    padding: 3px 0;
+    color: var(--muted);
+  }
+  .analyst-card ul li::before {
+    content: '▸ ';
+    font-size: 0.7rem;
+  }
+
+  /* Workflow */
+  .track-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 700px) { .track-grid { grid-template-columns: 1fr; } }
+  .track-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+  }
+  .track-card h3 {
+    font-size: 1.15rem;
+    margin-bottom: 16px;
+    color: #f0f6fc;
+  }
+  .track-card .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .track-card .step:last-child { border-bottom: none; }
+  .step-num {
+    background: var(--border);
+    color: var(--text);
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .step-info h4 { font-size: 0.9rem; margin-bottom: 2px; }
+  .step-info p { font-size: 0.8rem; color: var(--muted); }
+
+  /* Cycle Table */
+  .cycle-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  .cycle-table th, .cycle-table td {
+    padding: 12px 16px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .cycle-table th {
+    background: var(--card);
+    font-weight: 600;
+    color: #f0f6fc;
+  }
+  .cycle-table .star { color: var(--yellow); font-weight: 700; }
+  .cycle-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Advantage */
+  .adv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  .adv-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+  }
+  .adv-card h4 {
+    font-size: 1.05rem;
+    margin-bottom: 8px;
+    color: #f0f6fc;
+  }
+  .adv-card p {
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+
+  /* Signal Flow */
+  .signal-flow {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px;
+    overflow-x: auto;
+  }
+  .signal-flow pre {
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--text);
+    white-space: pre;
+  }
+  .signal-flow .key { color: var(--accent); }
+  .signal-flow .val { color: var(--green); }
+  .signal-flow .str { color: var(--orange); }
+  .signal-flow .comment { color: var(--muted); }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 48px 0;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <h1>A股二级投研 AI Agent 系统</h1>
+  <p class="subtitle">
+    基于 Claude Code 多智能体架构的五位 AI 分析师协作系统 ——<br>
+    从行业判断到买卖决策，全流程 AI 辅助的买方投研工作台
+  </p>
+  <div class="badges">
+    <span class="badge green">5位 AI 分析师</span>
+    <span class="badge blue">6个跟踪周期</span>
+    <span class="badge purple">63个金融 Skill</span>
+    <span class="badge green">2个 MCP 数据源</span>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- 系统架构 -->
+<section>
+  <h2>🏗️ 系统架构</h2>
+  <p class="section-desc">四层架构，从数据到决策，层层递进</p>
+
+  <div class="arch-diagram">
+    <div class="arch-row">
+      <div class="arch-box accent">
+        <h4>📊 数据源层</h4>
+        <p>AKShare (1000+ API)<br>东方财富 · 新浪 · 腾讯</p>
+      </div>
+      <div class="arch-box accent">
+        <h4>📊 MCP 服务层</h4>
+        <p>akshare-mcp · tech-analysis-mcp<br>零 API Key · 免费开源</p>
+      </div>
+    </div>
+    <div class="arch-arrow">▼</div>
+    <div class="arch-row">
+      <div class="arch-box green">
+        <h4>🧠 1.基本面分析师</h4>
+        <p>行业逻辑 · 护城河<br>财务验证 · 估值</p>
+      </div>
+      <div class="arch-box purple">
+        <h4>🧠 2.情绪面分析师</h4>
+        <p>市场温度 · 舆情<br>散户逆向指标</p>
+      </div>
+      <div class="arch-box orange">
+        <h4>🧠 3.筹码面分析师</h4>
+        <p>股东结构 · 资金流向<br>筹码分布 · 合力</p>
+      </div>
+      <div class="arch-box cyan">
+        <h4>🧠 4.技术面分析师</h4>
+        <p>MACD/RSI/布林<br>多周期共振</p>
+      </div>
+    </div>
+    <div class="arch-arrow">▼</div>
+    <div class="arch-row">
+      <div class="arch-box" style="border:2px solid var(--purple); background:linear-gradient(135deg, rgba(188,140,255,0.08), rgba(88,166,255,0.08));">
+        <h4>🎯 总分析师（投资经理）</h4>
+        <p>矛盾检测 · 市况加权 · 决策输出<br>价格 + 仓位 + 止损 + 复盘节点</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 五位分析师详解 -->
+<section>
+  <h2>🧠 五位 AI 分析师</h2>
+  <p class="section-desc">四位专业分析师独立并行工作，总分析师综合决策</p>
+
+  <div class="analyst-grid">
+    <div class="analyst-card fund">
+      <div class="icon">🏭</div>
+      <h3>基本面分析师</h3>
+      <div class="role">Fundamental Analyst</div>
+      <div class="question">"这个生意好不好？值不值这个价？"</div>
+      <ul>
+        <li>行业增长逻辑 — TAM/CAGR/驱动力</li>
+        <li>护城河四维评分 — 供给/需求/规模/竞争</li>
+        <li>财务交叉验证 — ROE/现金流/一致性</li>
+        <li>估值判断 — PE分位数+DCF+可比</li>
+        <li>白名单决策矩阵 — 六维加权打分</li>
+      </ul>
+    </div>
+
+    <div class="analyst-card sent">
+      <div class="icon">🌡️</div>
+      <h3>情绪面分析师</h3>
+      <div class="role">Sentiment Analyst</div>
+      <div class="question">"现在该贪婪还是恐惧？"</div>
+      <ul>
+        <li>市场情绪指标 — 涨跌停/成交额/融资</li>
+        <li>个股舆情分析 — 新闻情绪归类</li>
+        <li>散户行为监测 — 逆向指标解读</li>
+        <li>情绪温度计 0-100 — 冰点→沸腾</li>
+        <li>策略输出 — 左侧布局/右侧跟随/减仓</li>
+      </ul>
+    </div>
+
+    <div class="analyst-card chip">
+      <div class="icon">🎰</div>
+      <h3>筹码面分析师</h3>
+      <div class="role">Chip & Flow Analyst</div>
+      <div class="question">"大资金在买还是卖？对手盘压力多大？"</div>
+      <ul>
+        <li>股东结构 — 集中度/实控人/机构</li>
+        <li>主力资金流 — 大单vs小单背离识别</li>
+        <li>北向+融资融券 — 长线vs杠杆博弈</li>
+        <li>龙虎榜 — 机构vs游资席位分析</li>
+        <li>筹码分布 — 成本密集区/获利盘比例</li>
+      </ul>
+    </div>
+
+    <div class="analyst-card tech">
+      <div class="icon">📈</div>
+      <h3>技术面分析师</h3>
+      <div class="role">Technical Analyst</div>
+      <div class="question">"什么价格买？什么价格卖？"</div>
+      <ul>
+        <li>10大指标工具 — 专属 MCP Server</li>
+        <li>多周期共振 — 周线定方向/日线找买点</li>
+        <li>买卖信号分级 — 强买/弱买/观望/卖出</li>
+        <li>价格锚点 — 三层买点+止损+分段止盈</li>
+        <li>风险收益比 — 自动计算</li>
+      </ul>
+    </div>
+
+    <div class="analyst-card chief" style="grid-column: 1 / -1;">
+      <div class="icon">🎯</div>
+      <h3>总分析师（投资经理）</h3>
+      <div class="role">Chief Analyst</div>
+      <div class="question">"综合四位专家的独立判断，做出最终决策。"</div>
+      <ul style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+        <li>📥 接收四份独立报告</li>
+        <li>🔍 矛盾交叉检测</li>
+        <li>⚖️ 市况自适应权重</li>
+        <li>🚫 基本面一票否决</li>
+        <li>📊 加权综合评分</li>
+        <li>💰 价格+仓位+止损</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 工作流 -->
+<section>
+  <h2>🔄 双轨制工作流</h2>
+  <p class="section-desc">Track A：初次覆盖建立白名单 · Track B：五级周期持续跟踪</p>
+
+  <div class="track-grid">
+    <div class="track-card" style="border-left: 3px solid var(--accent);">
+      <h3>🅰️ Track A：初次覆盖</h3>
+      <p style="color:var(--muted);font-size:0.88rem;margin-bottom:16px;">目标：判断是否纳入投资组合白名单</p>
+      <div class="step"><div class="step-num">1</div><div class="step-info"><h4>行业判断</h4><p>TAM/CAGR/政策/生命周期 → 不通过则终止</p></div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-info"><h4>商业模式+护城河</h4><p>四维评分(供给/需求/规模/竞争) + 证据</p></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-info"><h4>财务交叉验证</h4><p>5项一致性检验：毛利/营收/现金流/应收/研发</p></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-info"><h4>估值判断</h4><p>PE分位数 + 可比估值 + DCF区间</p></div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-info"><h4>白名单决策</h4><p>六维加权打分 → 🟢核心/🟡卫星/⚪观察/🔴排除</p></div></div>
+    </div>
+
+    <div class="track-card" style="border-left: 3px solid var(--green);">
+      <h3>🅱️ Track B：持续跟踪</h3>
+      <p style="color:var(--muted);font-size:0.88rem;margin-bottom:16px;">目标：辅助买卖点决策</p>
+
+      <table style="width:100%;font-size:0.85rem;margin-top:8px;">
+        <tr style="color:var(--muted);"><td style="padding:6px 0;">📅 周度</td><td style="padding:6px 0;">边际变化扫描</td><td style="padding:6px 0;color:var(--muted);">"这周要不要动手？"</td></tr>
+        <tr style="color:var(--muted);"><td style="padding:6px 0;">📅 月度</td><td style="padding:6px 0;">趋势方向确认</td><td style="padding:6px 0;color:var(--muted);">"中期趋势变了吗？"</td></tr>
+        <tr style="color:var(--yellow);"><td style="padding:6px 0;">⭐ 季度</td><td style="padding:6px 0;">财报验证逻辑</td><td style="padding:6px 0;color:var(--yellow);">"逻辑验证还是证伪？"</td></tr>
+        <tr style="color:var(--muted);"><td style="padding:6px 0;">📅 半年</td><td style="padding:6px 0;">行业格局审视</td><td style="padding:6px 0;color:var(--muted);">"格局有无结构性变化？"</td></tr>
+        <tr style="color:var(--muted);"><td style="padding:6px 0;">📅 年度</td><td style="padding:6px 0;">战略复盘规划</td><td style="padding:6px 0;color:var(--muted);">"α来自哪里？明年机会在哪？"</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Cycle analyst participation table -->
+  <h3 style="margin-top:40px;font-size:1.1rem;">各周期 AI 分析师参与度</h3>
+  <div style="overflow-x:auto;margin-top:16px;">
+  <table class="cycle-table">
+    <tr><th>周期</th><th>基本面</th><th>情绪面</th><th>筹码面</th><th>技术面</th><th>总分析师</th></tr>
+    <tr><td>初次覆盖</td><td><span class="star">★★★★★</span></td><td>★★★☆☆</td><td><span class="star">★★★★☆</span></td><td>★★★☆☆</td><td><span class="star">★★★★★</span></td></tr>
+    <tr><td>周度</td><td>★★☆☆☆</td><td>★★☆☆☆</td><td>★★☆☆☆</td><td><span class="star">★★★★★</span></td><td>★★★☆☆</td></tr>
+    <tr><td>月度</td><td>★★☆☆☆</td><td><span class="star">★★★★☆</span></td><td><span class="star">★★★★☆</span></td><td><span class="star">★★★★☆</span></td><td><span class="star">★★★★★</span></td></tr>
+    <tr><td style="color:var(--yellow);font-weight:700;">季度 ⭐</td><td><span class="star">★★★★☆</span></td><td>★★★☆☆</td><td><span class="star">★★★★☆</span></td><td>★★★☆☆</td><td><span class="star">★★★★★</span></td></tr>
+    <tr><td>半年</td><td><span class="star">★★★★★</span></td><td>★★★☆☆</td><td><span class="star">★★★★☆</span></td><td>★★☆☆☆</td><td><span class="star">★★★★★</span></td></tr>
+    <tr><td>年度</td><td><span class="star">★★★★★</span></td><td>★★★☆☆</td><td><span class="star">★★★★☆</span></td><td>★☆☆☆☆</td><td><span class="star">★★★★★</span></td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- 标准化信号 -->
+<section>
+  <h2>📡 标准化信号接口</h2>
+  <p class="section-desc">四位分析师通过统一的 YAML 信号格式与总分析师通信，实现解耦和高效合成</p>
+
+  <div class="signal-flow">
+    <pre><span class="comment"># 每个分析师报告中的标准化信号块 —— 总分析师直接消费</span>
+<span class="key">signal</span>:
+  <span class="key">direction</span>: <span class="val">bullish</span>          <span class="comment"># bullish | neutral | bearish</span>
+  <span class="key">strength</span>:  <span class="val">moderate</span>         <span class="comment"># strong | moderate | weak</span>
+  <span class="key">confidence</span>: <span class="val">78</span>             <span class="comment"># 0-100 分析师对自身判断的把握</span>
+  <span class="key">score</span>:      <span class="val">77</span>             <span class="comment"># 0-100 标准化评分</span>
+
+<span class="key">key_evidence</span>:                 <span class="comment"># 3条核心证据</span>
+  - <span class="str">"护城河极深：唯一总体资质..."</span>
+  - <span class="str">"财务反转：净利润V型反弹"</span>
+  - <span class="str">"估值合理：PE 22x"</span>
+
+<span class="key">red_flags</span>:                    <span class="comment"># 危险信号（如有则总分析师一票否决）</span>
+  - <span class="str">"实控人减持套现10亿"</span>
+
+<span class="key">catalyst</span>:                     <span class="comment"># 未来催化剂</span>
+  - <span class="str">"十五五规划落地"</span></pre>
+  </div>
+</section>
+
+<!-- 核心优势 -->
+<section>
+  <h2>✨ 核心优势</h2>
+  <p class="section-desc">与传统投研方式相比，这套 AI Agent 系统在以下维度具有显著优势</p>
+
+  <div class="adv-grid">
+    <div class="adv-card">
+      <h4>🔄 多维度交叉验证</h4>
+      <p>四位分析师从完全不同的数据源和分析框架独立得出结论。基本面看"值不值"，情绪面看"怕不怕"，筹码面看"谁在买"，技术面看"何时买"。四维交叉，避免单一维度偏见导致的决策失误。</p>
+    </div>
+    <div class="adv-card">
+      <h4>⚡ 并行效率</h4>
+      <p>四位分析师通过 Claude Code Subagent 并行工作，一次"月度跟踪"只需几分钟即可完成，而人工完成同等深度研究需要 4-6 小时。特别适合覆盖多标的的买方分析师。</p>
+    </div>
+    <div class="adv-card">
+      <h4>📐 标准化决策流程</h4>
+      <p>每次分析遵循固定的工作流——从数据获取到信号输出，从矛盾检测到加权决策。消除情绪化决策，确保每一笔投资都经过相同的严谨流程。决策日志可回溯、可复盘。</p>
+    </div>
+    <div class="adv-card">
+      <h4>🆓 零成本数据源</h4>
+      <p>全部基于 AKShare 免费开源数据，无需 Bloomberg/Wind 等昂贵终端。1000+ API 覆盖行情、财务、资金流向、龙虎榜、筹码分布、融资融券等，数据广度超过多数付费平台。</p>
+    </div>
+    <div class="adv-card">
+      <h4>🧬 模块化可扩展</h4>
+      <p>63 个金融 Skill + 5 个分析师 Skill + 2 个 MCP Server 均为独立模块。可随时新增数据源（Wind/同花顺）、新增分析维度（ESG/量化因子）、替换底层 LLM（DeepSeek/Qwen/Claude）。</p>
+    </div>
+    <div class="adv-card">
+      <h4>📚 知识沉淀与复用</h4>
+      <p>每个标的的研究数据以标准化格式存档（CSV序列+Markdown报告），形成可检索的研究知识库。新覆盖标的时可直接复用行业模板和可比公司数据，研究效率持续提升。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 技术栈 -->
+<section>
+  <h2>🔧 技术栈</h2>
+  <p class="section-desc">轻量、免费、可私有化部署</p>
+
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px;">
+    <div class="arch-box accent"><h4>🤖 AI 引擎</h4><p>Claude Code<br>DeepSeek V4 Pro</p></div>
+    <div class="arch-box green"><h4>📊 数据源</h4><p>AKShare (1000+ API)<br>东方财富/新浪/腾讯</p></div>
+    <div class="arch-box purple"><h4>📐 技术指标</h4><p>ta 库 + pandas<br>15+ 技术指标</p></div>
+    <div class="arch-box orange"><h4>🔌 协议</h4><p>MCP (Model Context Protocol)<br>FastMCP · stdio</p></div>
+    <div class="arch-box cyan"><h4>🐍 语言</h4><p>Python 3.11+<br>PowerShell</p></div>
+    <div class="arch-box"><h4>📁 数据格式</h4><p>CSV (时间序列)<br>Markdown (报告)</p></div>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <p>A股二级投研 AI Agent 系统 · 基于 Claude Code 多智能体架构</p>
+  <p style="margin-top:4px;">仅供学习研究 · 不构成投资建议</p>
+</footer>
+
+</body>
+</html>

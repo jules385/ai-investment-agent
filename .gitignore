@@ -1,0 +1,52 @@
+﻿# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ── 用户数据（不进入仓库） ──
+# 研究报告（仅排除根级 — workspace-template/ 下的模板仍被跟踪）
+/reports/stocks/*
+!/reports/stocks/.gitkeep
+
+# 组合管理文件（含真实持仓信息，仅排除根级）
+/reports/持仓组合.md
+/reports/白名单组合.md
+/reports/黑名单组合.md
+/reports/白名单.md
+/reports/决策日志.md
+
+# 组合周度跟踪（含真实持仓数据）
+/reports/组合周度跟踪/
+
+# HTML 报告（含真实数据）
+/reports/stocks/**/*.html
+
+# Windows 快捷方式
+*.lnk
+
+# 临时调试脚本
+tools/_debug*
+
+# ── 用户配置（含 API Key） ──
+.mcp.json
+.claude/settings.json
+.claude/settings.local.json

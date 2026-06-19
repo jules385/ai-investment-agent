@@ -1,0 +1,7 @@
+akshare>=1.18.0
+ta>=0.11.0
+mcp>=1.27.0
+fastmcp>=3.4.0
+pandas>=2.0.0
+numpy>=1.24.0
+markdown>=3.5.0

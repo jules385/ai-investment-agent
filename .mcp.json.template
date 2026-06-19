@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "finance-data": {
+      "type": "stdio",
+      "command": "{{PYTHON_PATH}}",
+      "args": ["{{REPO_PATH}}/mcp-servers/finance-data/server.py"]
+    },
+    "tech-analysis": {
+      "type": "stdio",
+      "command": "{{PYTHON_PATH}}",
+      "args": ["{{REPO_PATH}}/mcp-servers/tech-analysis/server.py"]
+    },
+    "akshare": {
+      "type": "stdio",
+      "command": "{{PYTHON_PATH}}",
+      "args": ["-m", "akshare_mcp", "--transport", "stdio", "--format", "markdown"],
+      "disabled": true
+    }
+  }
+}
