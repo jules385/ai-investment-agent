@@ -55,41 +55,90 @@ Built on: **Claude Code Subagent orchestration** · **MCP protocol** · **AKShar
 
 ### 环境要求
 
-- Python 3.11+
-- Claude Code（桌面版/CLI/IDE 插件）
-- DeepSeek API Key（或 Anthropic API Key）
+- Python 3.10+
+- Claude Code（CLI / 桌面版 / IDE 插件）
+- DeepSeek API Key 或 Anthropic API Key
 
-### 安装
+### Claude Code CLI 用户（推荐，三步完成）
 
 ```bash
-# 1. 克隆仓库
+# 1. 克隆 + 安装
+git clone https://github.com/jules385/ai-investment-agent.git && cd ai-investment-agent
+pip install -r requirements.txt && python install.py
+
+# 2. 配置 API Key
+# 编辑 ~/.claude/settings.json，模板见下方
+
+# 3. 启动 Claude Code，直接使用
+claude
+```
+
+然后输入 `/analyze-initial 002414 高德红外` 即可开始第一次分析。
+
+### 桌面版 / IDE 插件用户
+
+```bash
 git clone https://github.com/jules385/ai-investment-agent.git
 cd ai-investment-agent
-
-# 2. 安装 Python 依赖
 pip install -r requirements.txt
-
-# 3. 运行安装脚本
 python install.py
 ```
 
-### 配置
+### 配置 API Key
 
-1. **配置 API Key**：编辑 `~/.claude/settings.json`，参考 `workspace-template/.claude/settings.json.template`
-2. **创建工作区**：复制 `workspace-template/` 到你的工作目录（如 `~/ai-investment/`）
-3. **添加白名单**：在 `reports/白名单.md` 中添加你想覆盖的标的
+编辑 `~/.claude/settings.json`，参考模板：
 
-### 使用
+```json
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "sk-your-api-key",
+    "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
+    "ANTHROPIC_MODEL": "deepseek-v4-pro"
+  },
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:*)",
+      "mcp__finance-data__*",
+      "mcp__tech-analysis__*",
+      "mcp__akshare__*"
+    ]
+  }
+}
+```
+
+> 完整模板见 `workspace-template/.claude/settings.json.template`。用 DeepSeek 填 DeepSeek 的 Key，用 Anthropic 填 Anthropic 的 Key，两套都支持。
+
+### 创建用户工作区
 
 ```bash
-# 启动 Claude Code，执行：
-/analyze-initial 002414 高德红外    # 初次覆盖
-/analyze-weekly                    # 周度跟踪（遍历白名单）
-/analyze-monthly  002414           # 月度跟踪（指定标的）
-/analyze-quarterly                 # 季度跟踪
-/analyze-annual 002414             # 年度战略复盘
-/analyze-portfolio-weekly          # 组合批量周度跟踪
-/beautify-report 002414-高德红外    # 生成 HTML 报告
+cp -r workspace-template ~/ai-investment
+```
+
+然后在 `~/ai-investment/reports/白名单组合.md` 中添加你的标的。
+
+### 验证安装
+
+```bash
+# 检查 MCP Server 是否正常
+python tools/self-test.py
+
+# 预期输出：4/4 通过
+```
+
+### 开始使用
+
+```bash
+claude                                                    # CLI 用户启动
+# 或在桌面版/IDE 中直接操作
+
+/analyze-initial 002414 高德红外                           # 初次覆盖
+/analyze-weekly                                           # 周度跟踪
+/analyze-monthly  002414                                  # 月度跟踪
+/analyze-quarterly 002414                                 # 季度跟踪
+/analyze-annual 002414                                    # 年度战略复盘
+/analyze-portfolio-weekly                                 # 组合批量周度跟踪
+/beautify-report 002414-高德红外                           # 生成 HTML 报告
 ```
 
 ## 目录结构
