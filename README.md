@@ -75,7 +75,7 @@ pip install -r requirements.txt && python install.py
 claude
 ```
 
-然后输入 `/analyze-initial 002414 高德红外` 即可开始第一次分析。
+然后输入 `/analyze-initial + 股票名称或代码` 即可开始第一次分析。
 
 ### 桌面版 / IDE 插件用户
 
@@ -146,7 +146,7 @@ claude                                                    # CLI 用户启动
 /help                                                     # 查看所有可用命令
 
 # 自然语言也可用（备选，可能不稳定）：
-# "对高德红外进行初次覆盖"
+# "对xx股票外进行初次覆盖"
 ```
 
 **首次使用验证**：输入 `/analyze-initial` 后，如果 Claude 的回复开头出现 `🔴 总分析师已激活`，说明一切正常。如果没出现 → 运行 `python install.py` 重装。
