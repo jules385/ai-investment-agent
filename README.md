@@ -59,7 +59,7 @@ Built on: **Claude Code Subagent orchestration** · **MCP protocol** · **AKShar
 - Claude Code（CLI / 桌面版 / IDE 插件）
 - DeepSeek API Key 或 Anthropic API Key
 
-### Claude Code CLI 用户（推荐，三步完成）
+### Claude Code CLI 用户（推荐，三步完成，Codex用户可自行适配）
 
 ```bash
 # 1. 克隆 + 安装
@@ -70,6 +70,8 @@ pip install -r requirements.txt && python install.py
 # 编辑 ~/.claude/settings.json，模板见下方
 
 # 3. 启动 Claude Code，直接使用
+
+#注意：Codex用户安装完成后请输入以下提示词-"阅读 docs/CODEX适配指南.md，然后读取所有 skills/analysts/ 下的 SKILL.md 和 commands/ 下的命令文件，把它们全部改写为 Codex 原生格式，保存到新建的 codex-agents/ 和 codex-commands/ 目录"
 claude
 ```
 
@@ -128,19 +130,19 @@ python tools/self-test.py
 
 ### 开始使用
 
-> 🔴 **必须使用斜杠命令**（`/analyze-initial`），不要输入自然语言。斜杠命令是 Claude Code 的确定性加载机制——只要命令文件存在，就一定会被加载。自然语言依赖 Skill 的触发词匹配，可能失败。
+> 🔴 **尽可能使用斜杠命令**（`/analyze-initial`），不要输入自然语言。斜杠命令是 Claude Code 的确定性加载机制——只要命令文件存在，就一定会被加载。自然语言依赖 Skill 的触发词匹配，可能失败。
 
 ```bash
 claude                                                    # CLI 用户启动
 
-# 🔴 使用斜杠命令（推荐，100% 可靠）：
-/analyze-initial 002414 高德红外                           # 初次覆盖
+# 🔴 使用斜杠命令+股票名称或代码（仅支持A股）：
+/analyze-initial                                          # 初次覆盖
 /analyze-weekly                                           # 周度跟踪
-/analyze-monthly  002414                                  # 月度跟踪
-/analyze-quarterly 002414                                 # 季度跟踪
-/analyze-annual 002414                                    # 年度战略复盘
-/analyze-portfolio-weekly                                 # 组合批量周度跟踪
-/beautify-report 002414-高德红外                           # 生成 HTML 报告
+/analyze-monthly                                          # 月度跟踪
+/analyze-quarterly                                        # 季度跟踪
+/analyze-annual                                           # 年度战略复盘
+/analyze-portfolio-weekly（或者monthly等）                # 组合批量周度跟踪
+/beautify-report                                          # 生成 HTML 报告
 /help                                                     # 查看所有可用命令
 
 # 自然语言也可用（备选，可能不稳定）：
