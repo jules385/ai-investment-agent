@@ -1,42 +1,86 @@
-# 实施任务: 检查点 3: 数据解析器 + 工作区自动填充
+# 实施任务: 检查点 3: AI 数据解析器 + 工作区自动填充
 
 ## 📋 任务描述
 
-实现 Markdown 研报解析器，从 `reports/stocks/` 下已有的研报中提取结构化数据，自动填充工作区。基于检查点 2 已完成的聊天界面和检查点 1 的 `parser.py` 骨架。
+🔴 **不使用规则解析。使用 AI（Claude API）提取结构化数据。** `parser.py` 不做正则匹配——它调用 Anthropic API，把研报全文发给 Claude，用 prompt 让 AI 提取结构化 JSON。这样无论报告是什么格式、哪个分析师写的、新旧版本，都能自适应处理。
 
 ## 🔨 具体任务
 
-1. `web/api/parser.py`：完整实现 `parse_all_reports(reports_dir)`。遍历 `reports/stocks/` 下所有 `*-初次覆盖/` 目录，读取 `子报告-基本面分析师-*.md` 和 Chief 报告，提取以下内容：
+### 3a. AI 解析器核心
 
-2. `web/api/parser.py`：`extract_industry_chain(text)` — 检测 `### 1.1 产业链拆分` 章节，解析 `├──` `└──` `│` 树形结构。每行提取子环节名称、代表公司、毛利率、壁垒。输出 JSON 数组
+`web/api/parser.py`：只有一个函数 `ai_extract(report_text, extraction_type)`。调用 Anthropic API（复用 `ANTHROPIC_API_KEY` 环境变量），把研报全文和提取指令发给 Claude，返回结构化 JSON。
 
-3. `web/api/parser.py`：`extract_financials(text)` — 检测 `## 三、财务` 或 `### 3.` 下的表格。提取最近 5 年营收/净利/毛利率/净利率/ROE 数据。输出时间序列 JSON
+**三种提取类型 + Prompt 设计**：
 
-4. `web/api/parser.py`：`extract_investment_thesis(text)` — 检测 `## 五、结论` 或核心投资故事段落。提取多方逻辑和空方逻辑。检测 YAML 信号块（`signal:` `direction:`）。输出 JSON
+**类型 1: `industry_knowledge`** — 提取行业知识库数据
+```
+Prompt: "从以下研报中提取行业知识库数据，返回 JSON：
+{
+  industry: 行业名称,
+  chain: [{name, tier: '上游'|'中游'|'下游', companies, gross_margin, barriers}],
+  tam_cagr: {market_size, cagr, forecast_year},
+  financial_benchmarks: {可比公司: {revenue, net_profit, gross_margin, pe}}
+}
+只提取明确写到的数据，不要编造。"
+```
 
-5. `web/api/parser.py`：`extract_tracking_indicators(text)` — 检测 `跟踪指标` 或 `### 5.5` 表格。提取每个指标的名称、频率、阈值。输出 JSON 数组
+**类型 2: `investment_thesis`** — 提取投资逻辑
+```
+Prompt: "从以下研报中提取投资逻辑，返回 JSON：
+{
+  bull_theses: [{statement, evidence, status: '强化'|'维持'|'弱化'|'推翻'}],
+  bear_theses: [{statement, trigger_condition, severity: '高'|'中'|'低'}],
+  signals: {fundamental: {direction, strength, score}, chip_flow: {}, technical: {}, sentiment: {}},
+  key_assumptions: [{assumption, verification_status}]
+}
+"
+```
 
-6. `web/api/parser.py`：`extract_events(text)` — 从周度/月度报告（`02-周度跟踪/` `03-月度跟踪/`）中提取 `| 🔴` `| 🟠` 开头的表格行。输出 JSON 数组
+**类型 3: `tracking_data`** — 提取跟踪指标和事件
+```
+Prompt: "从以下研报中提取跟踪数据和事件，返回 JSON：
+{
+  indicators: [{name, category, frequency, latest_value, threshold, status: 'normal'|'warning'|'triggered'}],
+  events: [{date, description, severity: 'critical'|'major'|'minor', source_report}],
+  decisions: [{date, action, rating, rationale}]
+}
+"
+```
 
-7. `web/api/server.py`：`/api/parse-all` 完整实现。调用 parser，将结果写入 `reports/workspace-data.json`，返回解析统计
+### 3b. 批量解析入口
 
-8. `web/api/server.py`：`/api/workspace` 改为读取并返回 `reports/workspace-data.json` 的内容（如果文件不存在则返回空结构）
+`web/api/server.py`：`/api/parse-all` 实现。遍历 `reports/stocks/`：
+- 对每个标的，找最新初次覆盖报告和所有跟踪报告
+- 对初次覆盖报告调 `ai_extract(text, 'industry_knowledge')` + `ai_extract(text, 'investment_thesis')`
+- 对跟踪报告调 `ai_extract(text, 'tracking_data')`
+- 所有结果合并写入 `reports/workspace-data.json`
 
-9. `web/js/workspace.js`：基础渲染。2.1.1 行业卡片网格（从 workspace-data 动态生成）。2.2.1 标的下拉选择器。2.3.1 跟踪指标卡片（显示状态灯）
+### 3c. 工作区前端渲染
 
-10. 容错：找不到某章节 → 返回空数组。表格格式不一致 → 按表头匹配不硬编码列索引。YAML 解析失败 → 返回 `{raw: "原文", parsed: false}`。旧格式报告 → 标注 `format: "legacy"`
+`web/js/workspace.js`：基础渲染（从 workspace-data 读取数据）：
+- 2.1.1 行业卡片网格（按行业分组，显示覆盖标的数）
+- 2.2.1 标的下拉选择器（列出所有已解析标的）
+- 2.3.1 跟踪指标卡片网格（状态灯 🟢🟡🔴 + 阈值高亮）
+- 2.3.2 事件时间线（🟠🔴 分级 + 日期 + 描述）
+
+### 3d. 容错
+
+- API Key 未配置 → 返回错误提示，不崩溃
+- Claude API 调用失败 → 返回 `{error: "...", extracted: {}}`，不崩溃
+- 某标的无研报 → 跳过，不崩溃
+- Claude 返回的 JSON 解析失败 → 重试一次，仍失败则保存原始文本
 
 ## ✅ 验收标准
 
 - `POST /api/parse-all` 返回 `stocks_parsed >= 1`
-- 工作区 Tab 显示行业卡片（至少"半导体/电子"）
-- 选择"002463-沪电股份"后，指标卡片显示跟踪指标及状态灯
-- 尚无研报的标的不崩溃，显示"暂无数据"
-- 旧格式报告不崩溃
+- 工作区 Tab 显示行业卡片（至少显示"半导体/电子"）
+- 选择"002463-沪电股份"后可见多空逻辑和跟踪指标
+- 尚无研报的标的不崩溃
+- AI 提取失败时有降级提示，不白屏
 
 ## ⚠️ 不修改的文件
 
-- `web/js/chat.js` `web/css/style.css`（除非新增工作区样式）
+- `web/js/chat.js` `web/css/style.css`（工作区样式可新增）
 - `skills/` `commands/` `mcp-servers/` `tools/` `knowledge/` `docs/`
 
 ## ⚠️ 不要修改的文件

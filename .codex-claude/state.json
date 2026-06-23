@@ -3,11 +3,11 @@
   "version": "0.2.0",
   "project_root": "C:\\Users\\jules\\Projects\\ai-investment-agent",
   "current_checkpoint": 3,
-  "checkpoint_status": "pending_review",
+  "checkpoint_status": "pending",
   "phase": "running",
-  "current_commit": "7051538",
-  "review_round": 0,
-  "pending_issues": 0,
+  "current_commit": "e3a307c",
+  "review_round": 1,
+  "pending_issues": 1,
   "total_checkpoints": 5,
   "checkpoints": [
     {
@@ -25,7 +25,7 @@
     {
       "name": "检查点 3: 数据解析器 + 工作区自动填充",
       "description": "解析 reports/stocks/ 下的 Markdown 研报，提取结构化数据填充工作区",
-      "tasks": "1. parser.py 完整实现(产业链/财务/逻辑/指标/事件提取)\n2. /api/parse-all 端点\n3. /api/workspace 返回 workspace-data.json\n4. workspace.js 基础渲染",
+      "tasks": "🔴 方案变更：改为AI解析而非规则解析。1. parser.py → ai_extract() 调Claude API提取\n2. 三种extraction type各一个prompt模板\n3. /api/parse-all批量遍历\n4. workspace.js基础渲染",
       "verification_criteria": "parse-all返回stocks_parsed>=1, 工作区Tab显示行业卡片和指标"
     },
     {
