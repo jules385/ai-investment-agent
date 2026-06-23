@@ -10,6 +10,8 @@ import os
 import json
 import subprocess
 import time
+from urllib.error import URLError
+from urllib.request import urlopen
 from pathlib import Path
 
 REPO_DIR = Path(__file__).parent.parent.resolve()
@@ -21,6 +23,11 @@ COMMANDS_DIR = HOME / ".claude" / "commands"
 PASS = "[PASS]"
 FAIL = "[FAIL]"
 WARN = "[WARN]"
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 # ── 测试标的信息 ─────────────────────────────────
 TEST_SYMBOL = "002202"
@@ -104,7 +111,7 @@ def gate1_mcp_servers():
         server_py = REPO_DIR / "mcp-servers" / name / "server.py"
         if server_py.exists():
             try:
-                code = server_py.read_text(encoding='utf-8')
+                code = server_py.read_text(encoding='utf-8-sig')
                 compile(code, f'{name}/server.py', 'exec')
                 check(f"{name} Server 语法检查", True)
             except SyntaxError as e:
@@ -251,7 +258,7 @@ def gate5_mcp_agent_compatibility(test_symbol="002202"):
         server_py = server_dir / name / "server.py"
         result = subprocess.run(
             [sys.executable, "-c",
-             "compile(open(r'{}', encoding='utf-8').read(), 'server.py', 'exec')".format(server_py)],
+             "compile(open(r'{}', encoding='utf-8-sig').read(), 'server.py', 'exec')".format(server_py)],
             capture_output=True, text=True
         )
         if result.returncode == 0:
@@ -299,6 +306,34 @@ def gate4_tool_coverage():
 
 # ── Main ───────────────────────────────────────────────
 
+def gate6_web_api():
+    header("Gate 6: Web API health check")
+
+    try:
+        with urlopen("http://127.0.0.1:8765/api/health", timeout=3) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        return check("localhost:8765/api/health", payload.get("status") == "ok", "running server")
+    except URLError as error:
+        warn("localhost:8765/api/health", f"server not running, using Flask test client: {error}")
+    except Exception as error:
+        warn("localhost:8765/api/health", f"HTTP check failed, using Flask test client: {error}")
+
+    try:
+        import importlib.util
+
+        server_path = REPO_DIR / "web" / "api" / "server.py"
+        spec = importlib.util.spec_from_file_location("web_api_server", server_path)
+        server = importlib.util.module_from_spec(spec)
+        sys.path.insert(0, str(REPO_DIR))
+        spec.loader.exec_module(server)
+        client = server.app.test_client()
+        response = client.get("/api/health")
+        payload = response.get_json()
+        return check("Flask test client /api/health", response.status_code == 200 and payload.get("status") == "ok")
+    except Exception as error:
+        return check("Web API Flask app", False, str(error)[:120])
+
+
 def main():
     print("=" * 60)
     print("  A股AI投研系统 — 自动化自测")
@@ -314,6 +349,7 @@ def main():
         "Gate 3: MCP 连通性": gate3_mcp_connectivity(),
         "Gate 4: 工具覆盖": gate4_tool_coverage(),
         "Gate 5: MCP 子Agent兼容": gate5_mcp_agent_compatibility(TEST_SYMBOL),
+        "Gate 6: Web API": gate6_web_api(),
     }
 
     # ── Summary ──

@@ -1,4 +1,5 @@
 async function loadWorkspaceData() {
+  setWorkspaceLoading(true);
   try {
     const response = await fetch("/api/workspace");
     if (!response.ok) {
@@ -10,11 +11,36 @@ async function loadWorkspaceData() {
     renderTheses(data.theses || {});
     renderTracking(data.tracking || {});
   } catch (error) {
-    console.warn("Workspace data is unavailable:", error);
+    showToast(`Workspace data is unavailable: ${error.message}`);
     renderKnowledgeBase({});
     renderTheses({});
     renderTracking({});
+  } finally {
+    setWorkspaceLoading(false);
   }
+}
+
+function showToast(message) {
+  let toast = document.querySelector("#appToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "appToast";
+    toast.className = "toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.add("show");
+  window.clearTimeout(toast.hideTimer);
+  toast.hideTimer = window.setTimeout(() => toast.classList.remove("show"), 4200);
+}
+
+function setWorkspaceLoading(isLoading) {
+  document.querySelectorAll("#knowledgeBase, #thesesBoard, #trackingBoard").forEach((node) => {
+    node.classList.toggle("loading", isLoading);
+    if (isLoading && node.children.length === 0) {
+      node.textContent = "Loading...";
+    }
+  });
 }
 
 function activateTab(tabName) {
@@ -62,4 +88,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   loadWorkspaceData();
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  showToast(event.reason && event.reason.message ? event.reason.message : "Unexpected network error");
 });

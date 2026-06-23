@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "project_root": "C:\\Users\\jules\\Projects\\ai-investment-agent",
   "current_checkpoint": 5,
-  "checkpoint_status": "pending",
+  "checkpoint_status": "pending_review",
   "phase": "running",
   "current_commit": "63234fa",
   "review_round": 0,

@@ -151,6 +151,27 @@ claude                                                    # CLI 用户启动
 
 **首次使用验证**：输入 `/analyze-initial` 后，如果 Claude 的回复开头出现 `🔴 总分析师已激活`，说明一切正常。如果没出现 → 运行 `python install.py` 重装。
 
+### Web 前端快速启动
+
+v0.2.0 新增本地 Web 工作台，用于投研对话和研究员工作区查看。
+
+```bash
+pip install -r requirements.txt
+python web/api/server.py
+```
+
+然后在浏览器打开 `web/index.html`。常用 API：
+
+```bash
+curl http://localhost:8765/api/health
+curl -X POST http://localhost:8765/api/parse-all
+```
+
+说明：
+- `ANTHROPIC_API_KEY` 未配置时，对话和 AI 解析会显示友好降级提示，不会阻塞界面。
+- `POST /api/parse-all` 会读取 `reports/stocks/` 并生成 `reports/workspace-data.json`。
+- 工作区 Tab 展示行业知识库、投资逻辑看板、边际变化追踪和调研记录输入。
+
 ## 目录结构
 
 ```

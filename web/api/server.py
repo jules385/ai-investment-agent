@@ -28,6 +28,17 @@ app = Flask(__name__)
 CORS(app)
 
 
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({"status": "error", "message": "API endpoint not found"}), 404
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+    app.logger.exception("Unhandled API error")
+    return jsonify({"status": "error", "message": "Unexpected API error", "detail": str(error)}), 500
+
+
 def empty_workspace() -> dict:
     return {
         "stocks_parsed": 0,

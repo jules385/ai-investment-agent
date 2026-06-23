@@ -331,6 +331,25 @@ select {
   line-height: 1.6;
 }
 
+.loading {
+  position: relative;
+  min-height: 72px;
+  color: var(--muted);
+}
+
+.loading::after {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-left: 8px;
+  border: 2px solid var(--bor);
+  border-top-color: var(--bl);
+  border-radius: 50%;
+  vertical-align: -2px;
+  animation: spin 0.8s linear infinite;
+}
+
 .workspace-list {
   display: grid;
   gap: 12px;
@@ -499,6 +518,29 @@ select {
   font-size: 13px;
 }
 
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 20;
+  max-width: min(420px, calc(100vw - 48px));
+  padding: 12px 14px;
+  border: 1px solid rgba(248, 81, 73, 0.45);
+  border-radius: 6px;
+  background: #21161a;
+  color: var(--hl);
+  box-shadow: 0 18px 40px var(--shadow);
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -524,6 +566,12 @@ th {
   46%,
   100% {
     opacity: 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
