@@ -48,8 +48,25 @@
 }
 ```
 
-## 判定规则
+## 判定规则 + 自动推进
 
-- 分数 >= 70 且无 critical 紧急项 → PASS，推进到下一个检查点
-- 分数 < 70 或有 critical 紧急项 → FAIL，Codex 修复后重新提交审查
-- 同一检查点最多审查 5 轮，超过 → 暂停，需要 Claude 重新评估方案
+审查完成后，你必须执行以下操作来驱动协作循环：
+
+### 如果 PASS（分数 >= 70 且无 critical 紧急项）
+
+1. 将审查报告保存到 `.codex-claude/reviews/checkpoint-N-round-X.md`
+2. **更新 `.codex-claude/state.json`**：
+   - 如果当前是最后一个检查点：`phase: "completed"`, `checkpoint_status: "completed"`
+   - 否则：`current_checkpoint: N+1`, `checkpoint_status: "pending"`, `history` 追加审查记录
+3. 输出给用户："检查点 N 通过（分数 X）。已推进到检查点 N+1。Codex 检测到 state.json 变化后将自动开始执行。"
+
+### 如果 FAIL（分数 < 70 或有 critical 紧急项）
+
+1. 将审查报告保存到 `.codex-claude/reviews/checkpoint-N-round-X.md`
+2. **更新 `.codex-claude/state.json`**：
+   - `checkpoint_status: "pending"`（current_checkpoint 不变）
+   - `pending_issues` 设为 urgent 数组的长度
+   - `history` 追加审查记录（含分数和紧急项摘要）
+3. 输出给用户："检查点 N 未通过（分数 X）。Codex 检测到后将自动读取审查报告并修复。"
+
+> 🔴 **关键**：你必须实际编辑 `state.json` 文件。Codex 在轮询这个文件，只有文件内容变化它才知道要做什么。

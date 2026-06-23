@@ -10,21 +10,62 @@ v0.2.0 的任务是**在此基础上新增 HTML 前端界面**，不修改已有
 
 技术栈：Python 3.10+, MCP 协议, AKShare, ta, pandas, numpy, Flask（v0.2.0新增）
 
-## 工作流程（批量执行模式）
+## 工作流程（持续执行模式）
 
-> 🔴 `auto_advance: true` — 你从检查点 1 一直跑到检查点 5，中途不停止。全部完成后 Claude 一次性审查。
+> 🔴 这是一个**持续运行的协作循环**。只有用户主动发起启动命令，之后全部由 Claude 和你的文件交换自动驱动。
 
-**执行步骤**：
+### 启动（用户执行一次）
 
-1. 读取 `.codex-claude/plan.md` → 获取全部 5 个检查点
-2. 读取 `.codex-claude/state.json` → 确认从检查点 1 开始
-3. 从检查点 1 开始，**依次执行全部 5 个检查点**：
-   - 每个检查点完成后 → `git add` + `git commit`（格式：`feat(checkpoint-N): 描述`）
-   - 更新 `state.json` 中的 `current_checkpoint` → 立即开始下一个检查点
-   - **不要**在检查点之间等待 Claude 审查
-4. 全部 5 个检查点完成后：
-   - 更新 `state.json`：`phase: "pending_review"`
-   - 输出："全部 5 个检查点已完成。git log 如下：[...]。请 Claude 审查。"
+用户将以下指令发送给你后，你开始持续运行：
+
+```
+请持续监控 .codex-claude/state.json。当 current_checkpoint > 0 且 checkpoint_status 为 "pending" 时，自动读取 .codex-claude/plan.md 执行当前检查点。每完成一个检查点后等待 Claude 审查 state.json，审查通过则自动进入下一个检查点，审查不通过则按审查报告修复后重新提交。
+```
+
+### 执行循环
+
+```
+① 读取 state.json
+      │
+      ▼
+② current_checkpoint=N, status="pending" → 读取 plan.md 检查点 N
+      │
+      ▼
+③ 执行检查点 N 的全部任务清单 → git add + git commit
+      │
+      ▼
+④ 更新 state.json：
+   checkpoint_status: "pending_review"
+   history 追加: {"checkpoint": N, "round": X, "status": "submitted", "timestamp": "..."}
+      │
+      ▼
+⑤ 输出："检查点 N 第 X 轮已提交，等待 Claude 审查。"
+      │
+      ▼
+⑥ 持续轮询 state.json（每 30 秒检查一次），等待 Claude 更新
+      │
+      ├── Claude 审查通过：
+      │     state.json 变为 current_checkpoint=N+1, status="pending"
+      │     → 回到①，执行下一个检查点
+      │
+      ├── Claude 审查不通过：
+      │     state.json 中 current_checkpoint 不变，status="pending"
+      │     且 history 中有新的 review 记录（含 urgent 项）
+      │     → 读取 .codex-claude/reviews/ 下最新审查报告
+      │     → 按 urgent 项的 fix 指令修复
+      │     → 回到④
+      │
+      └── state.json 中 phase="completed"
+            → 输出："全部检查点已完成。项目交付。"
+            → 停止轮询
+```
+
+### 每个检查点的执行步骤
+
+1. 读取 plan.md → 获取当前检查点的文件清单和任务清单
+2. 创建/修改文件 → 每个功能完成后 `git add` + `git commit`（格式：`feat(checkpoint-N): 描述`）
+3. 全部任务完成后 → 更新 state.json（见上）
+4. 轮询等待 Claude 审查
 
 ---
 
@@ -216,18 +257,17 @@ system_prompt += "你是 A股AI投研系统 的 AI 助手。你可以使用 MCP 
 
 ---
 
-## 批量审查失败后的重试流程
+## 审查不通过时的修复流程
 
-当 Claude 批量审查全部 5 个检查点后给出审查报告：
+当 state.json 显示 Claude 审查不通过（status="pending" 且 history 中有新的 review 记录）：
 
 1. 阅读 `.codex-claude/reviews/` 下最新的审查报告
-2. 关注每个检查点的 `urgent` 数组——按检查点分组，逐项修复
-3. 只修复未通过（`passed: false`）的检查点，不要重做已通过的
-4. 修复后 `git add` + `git commit`（格式：`fix: 修复审查问题 — [检查点N] [问题简述]`）
-5. 更新 `state.json` 中的 `pending_issues` 为 0
-6. 再次输出："全部修复完成。请 Claude 重新审查。"
+2. 按 `urgent` 数组逐项修复——每项含 `fix` 字段，直接按指令操作
+3. 修复后 `git add` + `git commit`（格式：`fix: 修复审查问题 — [检查点N] [问题简述]`）
+4. 更新 `state.json`：`checkpoint_status: "pending_review"`，history 追加新记录
+5. 继续轮询 state.json 等待 Claude 再审
 
-每轮审查最多 5 轮（`config.yaml` 中 `max_review_rounds: 5`）。5 轮仍不通过 → 暂停。
+每个检查点最多重试 3 次（`max_attempts_per_checkpoint`）。3 次不通过 → 暂停，等待用户介入。
 
 ---
 

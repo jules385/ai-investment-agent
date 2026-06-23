@@ -1,9 +1,10 @@
 # v0.2.0 开发计划：HTML 前端 + 研究员工作区
 
-> Claude 设计架构 → Codex 批量执行全部检查点 → Claude 一次性审查
+> Claude 设计架构 → 用户启动 → Codex 执行检查点 → Claude 自动审查 → 通过则推进/不通过则打回 → 循环直到全部完成
 >
-> 🔴 **启动指令**：将以下内容发送给 Codex：
-> "请阅读 .codex-claude/codex-prompt.md、.codex-claude/plan.md、.codex-claude/state.json，从检查点 1 开始批量执行全部 5 个检查点，中途不停止。"
+> 🔴 **启动指令**（用户只需执行一次，之后全部自动）：
+> 将以下内容发送给 Codex：
+> "请持续监控 .codex-claude/state.json。当 current_checkpoint > 0 且 checkpoint_status 为 pending 时，自动读取 .codex-claude/plan.md 执行当前检查点。每完成一个检查点后等待 Claude 审查 state.json，审查通过则自动进入下一个检查点，审查不通过则按审查报告修复后重新提交。"
 
 ---
 
