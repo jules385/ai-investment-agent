@@ -1,7 +1,7 @@
 ﻿# A股AI投研系统 · AI-Powered A-Share Investment Research
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.0.0-blue.svg)](VERSION)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](VERSION)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](requirements.txt)
 
 > **English** | [中文](#中文)

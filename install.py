@@ -12,7 +12,7 @@ import platform
 from pathlib import Path
 
 # ── 版本 ──────────────────────────────────────────
-VERSION = "0.0.0"
+VERSION = "0.2.0"
 
 # ── 路径检测 ──────────────────────────────────────
 REPO_DIR = Path(__file__).parent.resolve()
