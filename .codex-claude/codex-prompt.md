@@ -79,4 +79,47 @@ ai-investment-agent/
 
 ---
 
-**开始实施吧！做完后我会请 Claude 来审查你的工作。**
+---
+
+## 📋 全部检查点概览（供参考，当前只执行检查点 1）
+
+### 检查点 1: 项目脚手架 + 后端 API 骨架
+- **目标**: 创建 `web/` 目录结构和 Flask 后端的最小可运行版本
+- **验证**: `python web/api/server.py` 无报错, `curl /api/health` → 200
+
+### 检查点 2: 投研对话 — 聊天界面
+- **目标**: 实现 Claude 对话界面，SSE 流式响应，MCP 工具调用展示
+- **验证**: 输入消息有回复, 流式逐字显示
+
+### 检查点 3: 数据解析器 + 工作区自动填充
+- **目标**: 解析 Markdown 研报，提取结构化数据填充工作区
+- **验证**: parse-all 返回 stocks_parsed >= 1, 工作区 Tab 显示行业卡片
+
+### 检查点 4: 研究员工作区 — 完整交互
+- **目标**: 工作区三个子模块（知识库/看板/追踪）全部可交互
+- **验证**: 点击行业→详情, 选标的→多空卡片, 指标触发阈值显示🔴
+
+### 检查点 5: 集成测试 + 文档更新
+- **目标**: 端到端验证，文档完整
+- **验证**: 全流程无阻塞, 已有研报正确解析, 旧格式不崩溃
+
+---
+
+## 📡 API 契约
+
+```
+POST /api/chat           → SSE 流式对话
+POST /api/parse-all      → 解析全部研报 → workspace-data.json
+GET  /api/workspace      → 读取 workspace-data.json
+POST /api/research-note  → 提交调研记录 → AI解析 → 更新 workspace-data.json
+GET  /api/health         → 健康检查
+```
+
+## 🗂️ 工作目录
+
+项目根目录: `C:\Users\jules\Projects\ai-investment-agent`
+所有文件路径相对于此目录。Git 操作也在此目录下执行。
+
+---
+
+**开始实施吧！做完后请 Claude 来审查你的工作。**

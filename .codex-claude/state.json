@@ -1,6 +1,7 @@
 {
   "project": "ai-investment-agent",
   "version": "0.2.0",
+  "project_root": "C:\\Users\\jules\\Projects\\ai-investment-agent",
   "current_checkpoint": 1,
   "checkpoint_status": "in_progress",
   "phase": "running",
