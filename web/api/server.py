@@ -1,13 +1,18 @@
 from pathlib import Path
+import sys
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from parser import parse_all_reports
-
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-WORKSPACE_DATA = BASE_DIR / "web" / "workspace-data.json"
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+from web.api.parser import parse_all_reports
+
+
+WORKSPACE_DATA = BASE_DIR / "reports" / "workspace-data.json"
 
 app = Flask(__name__)
 CORS(app)
@@ -34,7 +39,7 @@ def chat():
 
     return jsonify(
         {
-            "response": f"已收到：{message or '空消息'}。这是检查点 1 的 mock 响应。",
+            "response": f"Received: {message or 'empty message'}. This is a checkpoint 1 mock response.",
             "history_length": len(history),
         }
     )

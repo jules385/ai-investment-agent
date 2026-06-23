@@ -5,8 +5,8 @@
   "current_checkpoint": 1,
   "checkpoint_status": "pending_review",
   "phase": "running",
-  "current_commit": null,
-  "review_round": 0,
+  "current_commit": "0c259bf",
+  "review_round": 1,
   "pending_issues": 0,
   "total_checkpoints": 5,
   "checkpoints": [
@@ -41,5 +41,14 @@
       "verification_criteria": "全流程无阻塞, 已有研报正确解析, 旧格式不崩溃, 文档完整"
     }
   ],
-  "history": []
+  "history": [
+    {
+      "checkpoint": 1,
+      "round": 1,
+      "score": 55,
+      "urgent": 3,
+      "timestamp": "2026-06-23T20:30:00",
+      "status": "failed"
+    }
+  ]
 }
