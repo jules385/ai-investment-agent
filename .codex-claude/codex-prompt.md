@@ -1,87 +1,53 @@
-# 实施任务: 检查点 3: AI 数据解析器 + 工作区自动填充
+# 实施任务: 检查点 4: 研究员工作区 — 完整交互
 
 ## 📋 任务描述
 
-🔴 **不使用规则解析。使用 AI（Claude API）提取结构化数据。** `parser.py` 不做正则匹配——它调用 Anthropic API，把研报全文发给 Claude，用 prompt 让 AI 提取结构化 JSON。这样无论报告是什么格式、哪个分析师写的、新旧版本，都能自适应处理。
+基于检查点 3 已完成的 AI 解析器（`workspace-data.json` 已可由 `/api/parse-all` 生成），实现工作区三个子模块的完整交互：行业知识库详情页、投资逻辑看板（多空卡片+信号仪表盘）、边际变化追踪（指标卡片+事件时间线+调研输入）。
 
 ## 🔨 具体任务
 
-### 3a. AI 解析器核心
+### 4a. 行业知识库交互
 
-`web/api/parser.py`：只有一个函数 `ai_extract(report_text, extraction_type)`。调用 Anthropic API（复用 `ANTHROPIC_API_KEY` 环境变量），把研报全文和提取指令发给 Claude，返回结构化 JSON。
+`web/js/workspace.js`：
+- 2.1.1 已有行业卡片网格 → 点击某个行业卡片 → 展开详情面板
+- 详情面板显示：产业链文本树（`.chain-tree` 样式）、TAM/CAGR 数据卡片、可比公司财务基准表
+- 从 `workspace-data.json` 的 `industries[industry]` 读取数据渲染
 
-**三种提取类型 + Prompt 设计**：
+### 4b. 投资逻辑看板
 
-**类型 1: `industry_knowledge`** — 提取行业知识库数据
-```
-Prompt: "从以下研报中提取行业知识库数据，返回 JSON：
-{
-  industry: 行业名称,
-  chain: [{name, tier: '上游'|'中游'|'下游', companies, gross_margin, barriers}],
-  tam_cagr: {market_size, cagr, forecast_year},
-  financial_benchmarks: {可比公司: {revenue, net_profit, gross_margin, pe}}
-}
-只提取明确写到的数据，不要编造。"
-```
+`web/js/workspace.js`：
+- 2.2.1 标的下拉选择器 → 选择标的 → 显示看板
+- 2.2.2 多空逻辑面板：`.bull-card`（绿色左边框）+ `.bear-card`（红色左边框），每张卡片显示逻辑陈述 + 证据 + 验证状态标签
+- 2.2.3 四维信号仪表盘：四个信号卡片（基本面/筹码面/技术面/情绪面），每个显示方向图标（🟢🔴🟡）+ 强度 + 评分
+- 2.2.4 决策记录列表：日期 + 评级 + 操作建议
 
-**类型 2: `investment_thesis`** — 提取投资逻辑
-```
-Prompt: "从以下研报中提取投资逻辑，返回 JSON：
-{
-  bull_theses: [{statement, evidence, status: '强化'|'维持'|'弱化'|'推翻'}],
-  bear_theses: [{statement, trigger_condition, severity: '高'|'中'|'低'}],
-  signals: {fundamental: {direction, strength, score}, chip_flow: {}, technical: {}, sentiment: {}},
-  key_assumptions: [{assumption, verification_status}]
-}
-"
-```
+### 4c. 边际变化追踪
 
-**类型 3: `tracking_data`** — 提取跟踪指标和事件
-```
-Prompt: "从以下研报中提取跟踪数据和事件，返回 JSON：
-{
-  indicators: [{name, category, frequency, latest_value, threshold, status: 'normal'|'warning'|'triggered'}],
-  events: [{date, description, severity: 'critical'|'major'|'minor', source_report}],
-  decisions: [{date, action, rating, rationale}]
-}
-"
-```
+`web/js/workspace.js`：
+- 2.3.1 跟踪指标卡片网格：每个指标一张卡，显示名称/最新值/阈值/状态灯（🟢正常 ⚠️接近 🔴触发）
+- 2.3.2 事件时间线：按日期倒序，🔴🟠🟡 分级标签，点击展开详情
+- 2.3.3 调研输入框：textarea + 提交按钮 → `POST /api/research-note` → 用 AI 解析调研记录 → 更新指标和事件
 
-### 3b. 批量解析入口
+### 4d. 调研记录 AI 处理
 
-`web/api/server.py`：`/api/parse-all` 实现。遍历 `reports/stocks/`：
-- 对每个标的，找最新初次覆盖报告和所有跟踪报告
-- 对初次覆盖报告调 `ai_extract(text, 'industry_knowledge')` + `ai_extract(text, 'investment_thesis')`
-- 对跟踪报告调 `ai_extract(text, 'tracking_data')`
-- 所有结果合并写入 `reports/workspace-data.json`
+`web/api/server.py`：`/api/research-note` 端点实现。接收 `{symbol, note}`，调用 Claude API 解析调研记录中的指标变化和事件，合并到 `workspace-data.json` 的 tracking 部分。
 
-### 3c. 工作区前端渲染
+### 4e. 样式
 
-`web/js/workspace.js`：基础渲染（从 workspace-data 读取数据）：
-- 2.1.1 行业卡片网格（按行业分组，显示覆盖标的数）
-- 2.2.1 标的下拉选择器（列出所有已解析标的）
-- 2.3.1 跟踪指标卡片网格（状态灯 🟢🟡🔴 + 阈值高亮）
-- 2.3.2 事件时间线（🟠🔴 分级 + 日期 + 描述）
-
-### 3d. 容错
-
-- API Key 未配置 → 返回错误提示，不崩溃
-- Claude API 调用失败 → 返回 `{error: "...", extracted: {}}`，不崩溃
-- 某标的无研报 → 跳过，不崩溃
-- Claude 返回的 JSON 解析失败 → 重试一次，仍失败则保存原始文本
+`web/css/style.css`：新增工作区全部样式——行业卡片、产业链文本树、TAM 数据卡片、多空逻辑卡片（`.bull-card` / `.bear-card`）、信号仪表盘、指标卡片网格、事件时间线、调研输入框、状态灯动画。
 
 ## ✅ 验收标准
 
-- `POST /api/parse-all` 返回 `stocks_parsed >= 1`
-- 工作区 Tab 显示行业卡片（至少显示"半导体/电子"）
-- 选择"002463-沪电股份"后可见多空逻辑和跟踪指标
-- 尚无研报的标的不崩溃
-- AI 提取失败时有降级提示，不白屏
+- 点击行业卡片 → 详情面板显示产业链+TAM+财务基准
+- 选择标的 → 多空逻辑卡片正确显示绿色/红色边框
+- 四维信号仪表盘显示方向/强度/评分
+- 跟踪指标中触发阈值的显示 🔴 状态灯
+- 在调研框输入文字 → 提交 → POST /api/research-note 返回成功
+- 所有数据来自 `workspace-data.json`，无硬编码
 
-## ⚠️ 不修改的文件
+## ⚠️ 不修改
 
-- `web/js/chat.js` `web/css/style.css`（工作区样式可新增）
-- `skills/` `commands/` `mcp-servers/` `tools/` `knowledge/` `docs/`
+- `web/api/parser.py` `web/js/chat.js` `skills/` `commands/` `mcp-servers/` `tools/` `knowledge/` `docs/`
 
 ## ⚠️ 不要修改的文件
 
