@@ -5,8 +5,8 @@
   "current_checkpoint": 0,
   "checkpoint_status": "pending",
   "phase": "testing",
-  "current_commit": "6df7dcb",
-  "review_round": 0,
+  "current_commit": "99d17ab",
+  "review_round": 1,
   "pending_issues": 0,
   "total_checkpoints": 5,
   "checkpoints": [

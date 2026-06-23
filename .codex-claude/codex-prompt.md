@@ -107,4 +107,21 @@
 
 ---
 
-**开始测试吧！完成后我会请 Claude 审查测试报告。**
+---
+
+## 🔄 执行-审查流程
+
+**全部测试完成后，必须执行以下操作：**
+
+1. 将所有测试结果写入 `.codex-claude/reviews/test-report.md`
+2. 更新 `.codex-claude/state.json`：
+   - `checkpoint_status: "pending_review"`
+   - `phase: "testing"`
+   - `history` 追加一条：`{"checkpoint": 0, "round": 1, "status": "submitted", "timestamp": "当前时间"}`
+3. 在对话中输出："测试全部完成。测试报告已写入 .codex-claude/reviews/test-report.md。请 Claude 审查。"
+
+**Claude 审查通过后会自动推进 state.json，审查不通过会打回修复。**
+
+---
+
+**开始测试吧！**
