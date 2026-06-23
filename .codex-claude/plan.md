@@ -1,10 +1,12 @@
 # v0.2.0 开发计划：HTML 前端 + 研究员工作区
 
-> Claude 设计架构 → 用户启动 → Codex 执行检查点 → Claude 自动审查 → 通过则推进/不通过则打回 → 循环直到全部完成
+> Claude 设计架构 → Claude 动态生成 codex-prompt.md（嵌入当前检查点任务）→ Codex 执行 → Claude 审查 → 通过则重新生成下一检查点的 codex-prompt.md / 不通过则打回 → 循环直到全部完成
 >
-> 🔴 **启动指令**（用户只需执行一次，之后全部自动）：
+> 🔴 **关键机制**：`codex-prompt.md` 不是静态文件。Claude 在每个检查点开始时重新生成它，把当前检查点的任务清单嵌入文件顶部。Codex 每次读取最新的 `codex-prompt.md` 执行。
+>
+> 🔴 **启动指令**（用户只需执行一次）：
 > 将以下内容发送给 Codex：
-> "请持续监控 .codex-claude/state.json。当 current_checkpoint > 0 且 checkpoint_status 不为 completed 时，根据状态自动执行对应操作。流程详见 .codex-claude/codex-prompt.md。"
+> "请持续监控 .codex-claude/state.json。当 checkpoint_status 不为 completed 时，读取 .codex-claude/codex-prompt.md 执行当前检查点任务。完成后更新 state.json 为 pending_review。当 state.json 显示审查通过后，等待 Claude 更新 codex-prompt.md 为下一个检查点，然后继续执行。"
 
 ---
 
