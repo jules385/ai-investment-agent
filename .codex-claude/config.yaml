@@ -1,0 +1,21 @@
+# Claude-Codex 协作配置
+# Claude = 架构师/审查者，Codex = 执行者
+# Claude 永不编写代码，只审查 Codex 的工作
+
+codex:
+  max_attempts_per_checkpoint: 3       # 每个检查点最多重试3次
+  timeout_seconds: 1800                # Codex 单次任务超时（30分钟）
+
+claude:
+  pass_threshold: 70                   # 审查分数 >= 70 才通过
+  review_depth: "standard"             # standard | deep（深度审查时检查更多边界情况）
+
+workflow:
+  auto_commit: true                    # Codex 完成每个功能后自动 git commit
+  auto_advance: false                  # Claude 手动决定检查点是否通过
+  max_review_rounds: 5                 # 同一检查点最多 5 轮审查
+
+notifications:
+  on_pass: true                        # 检查点通过时通知
+  on_fail: true                        # 检查点失败时通知
+  on_urgent: true                      # 有紧急问题时通知
