@@ -2,11 +2,11 @@
   "project": "ai-investment-agent",
   "version": "0.2.0",
   "project_root": "C:\\Users\\jules\\Projects\\ai-investment-agent",
-  "current_checkpoint": 1,
+  "current_checkpoint": 2,
   "checkpoint_status": "pending_review",
   "phase": "running",
-  "current_commit": "0c259bf",
-  "review_round": 1,
+  "current_commit": "d445150",
+  "review_round": 0,
   "pending_issues": 0,
   "total_checkpoints": 5,
   "checkpoints": [
@@ -49,6 +49,14 @@
       "urgent": 3,
       "timestamp": "2026-06-23T20:30:00",
       "status": "failed"
+    },
+    {
+      "checkpoint": 1,
+      "round": 2,
+      "score": 85,
+      "urgent": 0,
+      "timestamp": "2026-06-23T20:35:00",
+      "status": "passed"
     }
   ]
 }

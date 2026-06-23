@@ -28,17 +28,38 @@ function activateTab(tabName) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const commands = ["/analyze-initial", "/analyze-weekly", "/analyze-quarterly", "/beautify-report", "/help"];
+
   document.querySelectorAll(".tab-btn").forEach((button) => {
     button.addEventListener("click", () => activateTab(button.dataset.tab));
   });
 
-  document.querySelectorAll("[data-prompt]").forEach((button) => {
+  document.querySelectorAll("[data-prompt]").forEach((button, index) => {
+    const command = commands[index] || button.dataset.prompt;
+    button.dataset.prompt = command;
+    button.textContent = command;
     button.addEventListener("click", () => {
       const input = document.querySelector("#chatInput");
       input.value = button.dataset.prompt;
       input.focus();
     });
   });
+
+  const commandGrid = document.querySelector(".command-grid");
+  if (commandGrid && commandGrid.children.length < commands.length) {
+    commands.slice(commandGrid.children.length).forEach((command) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.prompt = command;
+      button.textContent = command;
+      button.addEventListener("click", () => {
+        const input = document.querySelector("#chatInput");
+        input.value = command;
+        input.focus();
+      });
+      commandGrid.appendChild(button);
+    });
+  }
 
   loadWorkspaceData();
 });
