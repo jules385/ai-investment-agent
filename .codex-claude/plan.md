@@ -1,6 +1,9 @@
 # v0.2.0 开发计划：HTML 前端 + 研究员工作区
 
-> Claude 设计架构 → Codex 逐检查点执行 → Claude 审查
+> Claude 设计架构 → Codex 批量执行全部检查点 → Claude 一次性审查
+>
+> 🔴 **启动指令**：将以下内容发送给 Codex：
+> "请阅读 .codex-claude/codex-prompt.md、.codex-claude/plan.md、.codex-claude/state.json，从检查点 1 开始批量执行全部 5 个检查点，中途不停止。"
 
 ---
 

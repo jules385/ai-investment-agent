@@ -10,15 +10,21 @@ v0.2.0 的任务是**在此基础上新增 HTML 前端界面**，不修改已有
 
 技术栈：Python 3.10+, MCP 协议, AKShare, ta, pandas, numpy, Flask（v0.2.0新增）
 
-## 工作流程
+## 工作流程（批量执行模式）
 
-1. 读取 `.codex-claude/plan.md` — 找到当前检查点的任务清单
-2. 读取 `.codex-claude/state.json` — 确认当前进度
-3. **先理解已有文件，再动手**：阅读下方"已存在文件清单"，理解项目结构
-4. 实现当前检查点的所有任务清单项
-5. 每个功能完成后，用 `git add` + `git commit` 提交（格式：`<type>: <description>`）
-6. 全部完成后，更新 `state.json` 中的 `current_checkpoint` 和 `phase`
-7. 在对话中输出："检查点 N 已完成，请 Claude 审查。git diff 如下：[...]"
+> 🔴 `auto_advance: true` — 你从检查点 1 一直跑到检查点 5，中途不停止。全部完成后 Claude 一次性审查。
+
+**执行步骤**：
+
+1. 读取 `.codex-claude/plan.md` → 获取全部 5 个检查点
+2. 读取 `.codex-claude/state.json` → 确认从检查点 1 开始
+3. 从检查点 1 开始，**依次执行全部 5 个检查点**：
+   - 每个检查点完成后 → `git add` + `git commit`（格式：`feat(checkpoint-N): 描述`）
+   - 更新 `state.json` 中的 `current_checkpoint` → 立即开始下一个检查点
+   - **不要**在检查点之间等待 Claude 审查
+4. 全部 5 个检查点完成后：
+   - 更新 `state.json`：`phase: "pending_review"`
+   - 输出："全部 5 个检查点已完成。git log 如下：[...]。请 Claude 审查。"
 
 ---
 
@@ -210,17 +216,18 @@ system_prompt += "你是 A股AI投研系统 的 AI 助手。你可以使用 MCP 
 
 ---
 
-## 审查失败后的重试流程
+## 批量审查失败后的重试流程
 
-当 Claude 审查你的产出后标记为 FAIL（分数 <70 或有 critical 紧急项）：
+当 Claude 批量审查全部 5 个检查点后给出审查报告：
 
 1. 阅读 `.codex-claude/reviews/` 下最新的审查报告
-2. 重点关注 `urgent` 数组——每项含 `fix` 字段，直接按指令修复
-3. 修复后 `git add` + `git commit`（格式：`fix: 修复审查问题 — [问题简述]`）
-4. 更新 `state.json` 中的 `pending_issues` 计数
-5. 再次输出："检查点 N 第 X 轮修复完成，请 Claude 重新审查"
+2. 关注每个检查点的 `urgent` 数组——按检查点分组，逐项修复
+3. 只修复未通过（`passed: false`）的检查点，不要重做已通过的
+4. 修复后 `git add` + `git commit`（格式：`fix: 修复审查问题 — [检查点N] [问题简述]`）
+5. 更新 `state.json` 中的 `pending_issues` 为 0
+6. 再次输出："全部修复完成。请 Claude 重新审查。"
 
-同一检查点最多 3 次重试（`config.yaml` 中 `max_attempts_per_checkpoint: 3`）。3 次仍不通过 → 暂停，等待 Claude 重新评估方案。
+每轮审查最多 5 轮（`config.yaml` 中 `max_review_rounds: 5`）。5 轮仍不通过 → 暂停。
 
 ---
 
