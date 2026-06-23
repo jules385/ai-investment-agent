@@ -138,6 +138,92 @@ v0.2.0 的任务是**在此基础上新增 HTML 前端界面**，不修改已有
 - 数据存储：单个 JSON 文件 `reports/workspace-data.json`，不要引入数据库
 - 所有 Python 文件使用 `pathlib.Path`，不要硬编码绝对路径
 
+---
+
+## API 配置指南
+
+### API Key 来源（优先级从高到低）
+
+1. 环境变量 `ANTHROPIC_API_KEY` 或 `DEEPSEEK_API_KEY`
+2. `~/.claude/settings.json` → `env.ANTHROPIC_AUTH_TOKEN`
+3. 项目根目录 `.env` 文件（不会被 Git 追踪）
+
+Codex 在 `server.py` 中按此顺序查找。找不到时 → 返回 401 + 友好提示"请配置 API Key"。
+
+### System Prompt 构建
+
+`server.py` 启动时执行一次：
+
+```
+system_prompt = ""
+for each skill in skills/analysts/*/SKILL.md:
+    读取 YAML frontmatter → 提取 name + description
+    读取正文 → 提取角色指令
+    system_prompt += f"## {name}\n{role_instruction}\n\n"
+system_prompt += "你是 A股AI投研系统 的 AI 助手。你可以使用 MCP 工具获取实时数据。"
+```
+
+不要加载 `knowledge/` 目录下的文件——那些是方法论参考，不是角色指令。
+
+### MCP 工具发现
+
+前端不直接调用 MCP Server。前端通过 `/api/chat` 发送消息，Claude API 自己根据 system prompt 和用户消息决定调用哪些 MCP 工具。Codex 不需要在代码中列出 MCP 工具清单——Claude 会自己从 `.mcp.json` 中发现它们。
+
+---
+
+## 数据解析器：Markdown 章节识别规则
+
+`web/api/parser.py` 解析 `reports/stocks/` 下的研报时，使用以下模式匹配章节：
+
+| 目标内容 | Markdown 章节特征 | 解析方式 |
+|---------|-----------------|---------|
+| 产业链拆分 | `### 1.1 产业链拆分` + 行首有 `├──` `└──` `│` 的树形块 | 按行解析树形结构 → JSON |
+| 市场空间 | `#### 1.3 市场空间` 或含 `TAM`/`SAM`/`CAGR` 的表格 | 提取表格行 → JSON 数组 |
+| 财务指标 | `## 三、财务` 或 `### 3.1` 下的 5年×N列表格 | 提取表头+数据行 → 时间序列 JSON |
+| 投资逻辑 | `## 五、结论` 或 `### 5.` 下的因果链段落 + `signal:` YAML 块 | 提取文本 + 解析 YAML |
+| 跟踪指标 | `### 5.5 跟踪指标清单` 或 `跟踪指标` 表格 | 提取表格，识别每行的阈值列 |
+| 事件 | 周度/月度报告中 `### 本周事件` 或 `| 🔴` `| 🟠` 开头的表格行 | 提取日期/等级/描述 |
+
+**容错规则**：
+- 找不到某章节 → 返回空数组 `[]`，不崩溃
+- 表格列数变化（不同报告格式不同）→ 用表头行匹配，不用硬编码列索引
+- YAML 块解析失败 → 返回 `{raw: "原始文本", parsed: false}`
+- 旧格式报告（v0.1.0 之前的初次覆盖报告可能缺 §5.5）→ 标注 `format: "legacy"`，尽可能提取能提取的
+
+---
+
+## 空状态和错误处理
+
+每个前端组件必须处理以下状态：
+
+| 状态 | 触发条件 | 展示 |
+|------|---------|------|
+| **加载中** | 正在 fetch API | 骨架屏或 loading spinner |
+| **空数据** | API 返回空数组/空对象 | 友好的空状态提示："暂无数据，完成初次覆盖后自动填充" |
+| **API 错误** | 网络断开/500/401 | Toast 通知 + 不崩溃 + 保留上次成功加载的数据 |
+| **解析失败** | parser 返回 error 字段 | 在对应卡片上显示 ⚠️ 图标 + 悬浮提示错误原因 |
+
+**特别处理**：
+- `workspace-data.json` 不存在时 → 返回初始空结构 `{"industries":{},"theses":{},"tracking":{}}`
+- `reports/stocks/` 下无任何研报时 → `/api/parse-all` 返回 `stocks_parsed: 0, message: "未找到研报文件"`
+- 用户未配置 API Key 时 → `/api/chat` 返回 401 + `{"error": "请配置 API Key（设置环境变量或编辑 ~/.claude/settings.json）"}`
+
+---
+
+## 审查失败后的重试流程
+
+当 Claude 审查你的产出后标记为 FAIL（分数 <70 或有 critical 紧急项）：
+
+1. 阅读 `.codex-claude/reviews/` 下最新的审查报告
+2. 重点关注 `urgent` 数组——每项含 `fix` 字段，直接按指令修复
+3. 修复后 `git add` + `git commit`（格式：`fix: 修复审查问题 — [问题简述]`）
+4. 更新 `state.json` 中的 `pending_issues` 计数
+5. 再次输出："检查点 N 第 X 轮修复完成，请 Claude 重新审查"
+
+同一检查点最多 3 次重试（`config.yaml` 中 `max_attempts_per_checkpoint: 3`）。3 次仍不通过 → 暂停，等待 Claude 重新评估方案。
+
+---
+
 ## 提交格式
 
 ```

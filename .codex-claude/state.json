@@ -2,7 +2,7 @@
   "project": "ai-investment-agent",
   "version": "0.2.0",
   "phase": "in_progress",
-  "total_checkpoints": 6,
+  "total_checkpoints": 5,
   "current_checkpoint": 1,
   "checkpoint_status": "not_started",
   "pending_issues": 0,
