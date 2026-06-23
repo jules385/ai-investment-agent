@@ -1,4 +1,31 @@
-# 实施任务: 检查点 4: 研究员工作区 — 完整交互
+# 实施任务: 检查点 5: 集成测试 + 文档更新（最后一步）
+
+## 📋 任务描述
+
+端到端验证全部功能，完善错误处理，更新文档。
+
+## 🔨 具体任务
+
+1. 端到端验证：`python web/api/server.py` 启动 → 浏览器打开 `web/index.html` → 投研对话 Tab 发消息 → 工作区 Tab 点击行业卡片 → 选择标的 → 查看多空逻辑和跟踪指标
+2. `web/api/server.py`：全局错误处理。API 不可用时返回友好降级提示。文件缺失时不崩溃
+3. `web/js/app.js`：全局错误处理。网络断开提示 toast。API 错误 toast。数据加载中 loading 状态
+4. `docs/使用手册.md`：新增"Web 前端使用"章节。启动步骤 + 界面说明 + 工作区功能介绍
+5. `README.md`：新增 Web 前端快速启动（`python web/api/server.py` → 浏览器打开 `web/index.html`）
+6. `tools/self-test.py`：新增 Web API 存活检查（`curl localhost:8765/api/health`）
+7. 清理调试代码（如有 console.log）
+8. `requirements.txt` 确认 `flask>=3.0.0` 和 `flask-cors>=4.0.0` 已添加
+
+## ✅ 验收标准
+
+- 全流程无阻塞：启动→打开→对话→解析→工作区
+- 已有研报（002463 等）正确解析并显示
+- 旧格式报告不崩溃
+- 文档更新完整
+- self-test.py 通过
+
+## ⚠️ 注意
+
+- 只修改上述文件，不动 `skills/` `commands/` `mcp-servers/` `parser.py`
 
 ## 📋 任务描述
 
