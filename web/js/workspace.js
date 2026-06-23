@@ -47,9 +47,12 @@ function renderKnowledgeBase(industries) {
     const stockNames = (industry.stocks || []).map((stock) => stock.stock).join(", ");
     const chainSummary = (industry.chain || [])
       .slice(0, 3)
-      .map((item) => item.name)
+      .map((item) => `${item.tier || ""} ${item.name || ""}`.trim())
       .join(" / ");
-    container.appendChild(createMiniCard(name, `${stockNames || "No stocks"}\n${chainSummary || "No chain data"}`));
+    const cagr = industry.tam_cagr && (industry.tam_cagr.cagr || industry.tam_cagr.market_size)
+      ? `\nTAM/CAGR: ${industry.tam_cagr.market_size || ""} ${industry.tam_cagr.cagr || ""}`.trim()
+      : "";
+    container.appendChild(createMiniCard(name, `${stockNames || "No stocks"}\n${chainSummary || "No chain data"}${cagr}`));
   });
 }
 
@@ -105,31 +108,60 @@ function renderTheses(theses) {
   });
 
   const thesis = theses[selectedKey] || {};
-  container.appendChild(createMiniCard("Summary", thesis.summary || "No summary"));
+  const stock = (data.stocks || {})[selectedKey] || {};
+  if (stock.errors && (stock.errors.investment_thesis || stock.errors.industry_knowledge)) {
+    container.appendChild(createMiniCard("AI extraction", stock.errors.investment_thesis || stock.errors.industry_knowledge));
+  }
 
-  const signalText = (thesis.signals || [])
+  const bullText = (thesis.bull_theses || thesis.bull || [])
     .slice(0, 4)
-    .map((signal) => `${signal["维度"] || signal.dimension || "Signal"}: ${signal["方向"] || signal.direction || ""}`)
+    .map((item) => typeof item === "string" ? item : `${item.statement || ""}\n${item.evidence || ""}`)
+    .join("\n\n");
+  const bearText = (thesis.bear_theses || thesis.bear || [])
+    .slice(0, 4)
+    .map((item) => typeof item === "string" ? item : `${item.statement || ""}\nTrigger: ${item.trigger_condition || ""}`)
+    .join("\n\n");
+  const signals = thesis.signals || {};
+  const signalText = Array.isArray(signals)
+    ? signals.map((signal) => `${signal.dimension || signal["维度"] || "Signal"}: ${signal.direction || signal["方向"] || ""}`).join("\n")
+    : Object.entries(signals)
+      .map(([name, signal]) => `${name}: ${signal.direction || ""} ${signal.strength || ""} ${signal.score || ""}`.trim())
+      .join("\n");
+  const assumptions = (thesis.key_assumptions || [])
+    .slice(0, 4)
+    .map((item) => `${item.assumption || ""}: ${item.verification_status || ""}`)
     .join("\n");
-  container.appendChild(createMiniCard("Signals", signalText || "No signals"));
 
-  const bullText = (thesis.bull || []).slice(0, 3).join("\n");
-  const bearText = (thesis.bear || []).slice(0, 3).join("\n");
+  container.appendChild(createMiniCard("Signals", signalText || "No signals"));
   container.appendChild(createMiniCard("Bull Case", bullText || "No bull case"));
   container.appendChild(createMiniCard("Bear Case", bearText || "No bear case"));
+  container.appendChild(createMiniCard("Key Assumptions", assumptions || "No assumptions"));
 }
 
 function statusClass(status) {
-  if (status === "red") {
+  if (status === "red" || status === "triggered" || status === "critical") {
     return "status-red";
   }
-  if (status === "yellow") {
+  if (status === "yellow" || status === "warning" || status === "major") {
     return "status-yellow";
   }
-  if (status === "green") {
+  if (status === "green" || status === "normal" || status === "minor") {
     return "status-green";
   }
   return "";
+}
+
+function statusLight(status) {
+  if (status === "triggered" || status === "critical" || status === "red") {
+    return "RED";
+  }
+  if (status === "warning" || status === "major" || status === "yellow") {
+    return "YELLOW";
+  }
+  if (status === "normal" || status === "minor" || status === "green") {
+    return "GREEN";
+  }
+  return "INFO";
 }
 
 function renderTracking(tracking) {
@@ -152,15 +184,30 @@ function renderTracking(tracking) {
   container.className = "workspace-list";
   container.innerHTML = "";
 
-  const indicators = (tracking[selectedKey] || {}).indicators || [];
-  if (indicators.length === 0) {
-    container.appendChild(createMiniCard(selectedKey, "No indicators"));
-    return;
+  const stock = (data.stocks || {})[selectedKey] || {};
+  if (stock.errors && stock.errors.tracking_data) {
+    container.appendChild(createMiniCard("AI extraction", stock.errors.tracking_data));
   }
 
+  const indicators = (tracking[selectedKey] || {}).indicators || [];
   indicators.slice(0, 8).forEach((indicator) => {
-    const card = createMiniCard(indicator.name, `${indicator.frequency || ""} ${indicator.threshold || ""}`.trim());
+    const card = createMiniCard(
+      `${statusLight(indicator.status)} ${indicator.name || "Indicator"}`,
+      `${indicator.latest_value || ""}\n${indicator.frequency || ""} ${indicator.threshold || ""}`.trim()
+    );
     card.classList.add(statusClass(indicator.status));
     container.appendChild(card);
   });
+
+  if (indicators.length === 0) {
+    container.appendChild(createMiniCard(selectedKey, "No indicators"));
+  }
+
+  const events = (tracking[selectedKey] || {}).events || [];
+  if (events.length > 0) {
+    container.appendChild(createMiniCard("Event Timeline", events
+      .slice(0, 6)
+      .map((event) => `${statusLight(event.severity)} ${event.date || ""} ${event.description || ""}`)
+      .join("\n")));
+  }
 }

@@ -1,5 +1,7 @@
 import json
 import os
+import re
+from datetime import datetime
 from pathlib import Path
 import sys
 from urllib.error import HTTPError, URLError
@@ -13,7 +15,7 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from web.api.parser import parse_all_reports
+from web.api.parser import ai_extract
 
 
 WORKSPACE_DATA = BASE_DIR / "reports" / "workspace-data.json"
@@ -28,9 +30,11 @@ CORS(app)
 
 def empty_workspace() -> dict:
     return {
+        "stocks_parsed": 0,
         "industries": {},
         "theses": {},
         "tracking": {},
+        "stocks": {},
     }
 
 
@@ -225,9 +229,147 @@ def models():
     return jsonify([DEFAULT_MODEL, DEEPSEEK_MODEL])
 
 
+def read_report_text(path: Path) -> str:
+    for encoding in ("utf-8", "utf-8-sig", "gb18030"):
+        try:
+            return path.read_text(encoding=encoding)
+        except UnicodeDecodeError:
+            continue
+    return path.read_text(encoding="utf-8", errors="ignore")
+
+
+def stock_identity(stock_dir: Path) -> tuple[str, str, str]:
+    match = re.match(r"(?P<code>\d{6})-(?P<name>.+)", stock_dir.name)
+    if not match:
+        return stock_dir.name, stock_dir.name, stock_dir.name
+    return stock_dir.name, match.group("code"), match.group("name")
+
+
+def latest_file(files: list[Path]) -> Path | None:
+    if not files:
+        return None
+    return sorted(files, key=lambda path: (path.stat().st_mtime, path.name))[-1]
+
+
+def initial_report_text(stock_dir: Path) -> tuple[str, list[str]]:
+    initial_dirs = [path for path in stock_dir.iterdir() if path.is_dir() and path.name.startswith("01-")]
+    if not initial_dirs:
+        return "", []
+
+    report_files = sorted(initial_dirs[0].glob("*.md"))
+    chief = latest_file([path for path in report_files if not path.name.startswith("子报告")])
+    fundamental = latest_file([path for path in report_files if "基本面" in path.name])
+    selected = [path for path in (chief, fundamental) if path]
+    if not selected:
+        selected = [latest_file(report_files)] if latest_file(report_files) else []
+
+    return "\n\n".join(read_report_text(path) for path in selected), [str(path) for path in selected]
+
+
+def tracking_report_text(stock_dir: Path) -> tuple[str, list[str]]:
+    selected = []
+    for folder in sorted(path for path in stock_dir.iterdir() if path.is_dir()):
+        if not folder.name.startswith(("02-", "03-", "04-")):
+            continue
+        selected.extend(sorted(folder.glob("*.md")))
+    return "\n\n".join(read_report_text(path) for path in selected), [str(path) for path in selected]
+
+
+def extraction_payload(result: dict) -> dict:
+    return result.get("extracted") if isinstance(result, dict) and isinstance(result.get("extracted"), dict) else {}
+
+
+def parse_all_reports_with_ai(reports_dir: Path) -> dict:
+    workspace = empty_workspace()
+    workspace["generated_at"] = datetime.now().isoformat(timespec="seconds")
+    workspace["ai_extraction"] = True
+    workspace["errors"] = []
+
+    if not reports_dir.exists():
+        workspace["errors"].append(f"Reports directory does not exist: {reports_dir}")
+        return workspace
+
+    for stock_dir in sorted(path for path in reports_dir.iterdir() if path.is_dir()):
+        markdown_files = sorted(stock_dir.rglob("*.md"))
+        if not markdown_files:
+            continue
+
+        stock_key, code, name = stock_identity(stock_dir)
+        initial_text, initial_sources = initial_report_text(stock_dir)
+        tracking_text, tracking_sources = tracking_report_text(stock_dir)
+
+        industry_result = ai_extract(initial_text, "industry_knowledge") if initial_text else {
+            "error": "No initial coverage report found.",
+            "extracted": {},
+        }
+        thesis_result = ai_extract(initial_text, "investment_thesis") if initial_text else {
+            "error": "No initial coverage report found.",
+            "extracted": {},
+        }
+        tracking_result = ai_extract(tracking_text, "tracking_data") if tracking_text else {
+            "error": "No tracking report found.",
+            "extracted": {"indicators": [], "events": [], "decisions": []},
+        }
+
+        industry_data = extraction_payload(industry_result)
+        thesis_data = extraction_payload(thesis_result)
+        tracking_data = extraction_payload(tracking_result)
+        industry_name = industry_data.get("industry") or "AI extraction unavailable"
+
+        stock_record = {
+            "code": code,
+            "name": name,
+            "stock": stock_key,
+            "industry": industry_name,
+            "industry_knowledge": industry_data,
+            "investment_thesis": thesis_data,
+            "tracking_data": tracking_data,
+            "errors": {
+                "industry_knowledge": industry_result.get("error"),
+                "investment_thesis": thesis_result.get("error"),
+                "tracking_data": tracking_result.get("error"),
+            },
+            "source_files": initial_sources + tracking_sources,
+        }
+        workspace["stocks"][stock_key] = stock_record
+        workspace["theses"][stock_key] = thesis_data
+        workspace["tracking"][stock_key] = tracking_data
+
+        grouped_industry = workspace["industries"].setdefault(
+            industry_name,
+            {
+                "name": industry_name,
+                "stocks": [],
+                "chain": industry_data.get("chain", []),
+                "tam_cagr": industry_data.get("tam_cagr", {}),
+                "financial_benchmarks": industry_data.get("financial_benchmarks", {}),
+            },
+        )
+        grouped_industry["stocks"].append({"stock": stock_key, "code": code, "name": name})
+        if not grouped_industry.get("chain") and industry_data.get("chain"):
+            grouped_industry["chain"] = industry_data.get("chain", [])
+
+        for extraction_name, extraction_result in (
+            ("industry_knowledge", industry_result),
+            ("investment_thesis", thesis_result),
+            ("tracking_data", tracking_result),
+        ):
+            if extraction_result.get("error"):
+                workspace["errors"].append(
+                    {
+                        "stock": stock_key,
+                        "extraction_type": extraction_name,
+                        "error": extraction_result.get("error"),
+                    }
+                )
+
+    workspace["stocks_parsed"] = len(workspace["stocks"])
+    return workspace
+
+
 @app.post("/api/parse-all")
 def parse_all():
-    data = parse_all_reports(BASE_DIR / "reports" / "stocks")
+    data = parse_all_reports_with_ai(BASE_DIR / "reports" / "stocks")
     WORKSPACE_DATA.parent.mkdir(parents=True, exist_ok=True)
     WORKSPACE_DATA.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     return jsonify(
