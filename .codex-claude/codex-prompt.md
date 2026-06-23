@@ -1,127 +1,82 @@
 # 测试任务: v0.2.0 前端验收测试
 
-## 📋 任务描述
+服务器已在 `http://127.0.0.1:8765` 运行（DeepSeek API 已配置）。
 
-对 v0.2.0 已完成的 Web 前端进行全面验收测试。服务器已在 `http://127.0.0.1:8765` 运行（DeepSeek API 已配置）。你需要从前端页面发起测试，记录每次 API 调用的请求/响应日志，输出测试结果。
+## 🔄 执行流程（每次一个测试，逐项进行）
 
-## 🔨 测试步骤（必须逐项执行并报告）
+🔴 **每次只执行 state.json 中标记为 `pending` 的那一个测试用例。执行完后立即更新 state.json 为 `pending_review`，等待 Claude 审查。Claude 审查通过后，state.json 会自动推进到下一个测试。Claude 审查不通过时，会给出修复指令——你修复后重新执行同一个测试，再次提交。**
 
-### 测试 A：API 端点基础连通性
+**不要**一次性执行全部测试。一项一项来。
 
-**A1. 健康检查**
-- 调用：`GET http://127.0.0.1:8765/api/health`
+---
+
+## 测试用例清单
+
+### 测试 A1：健康检查
+- 操作：`curl http://127.0.0.1:8765/api/health`
 - 预期：返回 `{"status":"ok"}`，HTTP 200
-- 记录：响应内容 + 状态码
+- 报告格式：实际响应内容 + 状态码 + PASS/FAIL
 
-**A2. 模型列表**
-- 调用：`GET http://127.0.0.1:8765/api/models`
-- 预期：返回包含 `claude-sonnet-4-20250514` 和 `deepseek-v4-pro` 的数组，HTTP 200
-- 记录：响应内容 + 状态码
+### 测试 A2：模型列表
+- 操作：`curl http://127.0.0.1:8765/api/models`
+- 预期：返回包含模型名的数组，HTTP 200
+- 报告格式：实际响应内容 + PASS/FAIL
 
-**A3. 工作区空数据**
-- 调用：`GET http://127.0.0.1:8765/api/workspace`
-- 预期：返回 `{"industries":{},"theses":{},"tracking":{}}`，HTTP 200
-- 记录：响应内容 + 状态码
+### 测试 A3：工作区空数据
+- 操作：`curl http://127.0.0.1:8765/api/workspace`
+- 预期：返回 `{"industries":{},"theses":{},"tracking":{}}` 或非空数据结构，HTTP 200
+- 报告格式：实际响应内容 + PASS/FAIL
 
----
+### 测试 B1：投研对话 — 基础消息
+- 操作：`curl -X POST http://127.0.0.1:8765/api/chat -H "Content-Type: application/json" -d '{"message":"你好，请简单介绍一下你自己"}'`
+- 预期：返回流式或非流式 AI 回复，HTTP 200。回复内容应包含与"AI投研助手"相关的介绍
+- 报告格式：回复内容摘要 + 是否获得有效回复 + PASS/FAIL
 
-### 测试 B：投研对话功能
+### 测试 B2：投研对话 — 命令按钮
+- 操作：在前端页面点击快捷命令按钮 `/analyze-initial` 和 `/help`
+- 预期：输入框被自动填入对应命令
+- 报告格式：描述按钮行为 + PASS/FAIL（需说明你是如何验证的）
 
-**B1. 基础对话**
-- 操作：打开 `web/index.html` → 切换到"投研对话"Tab → 在输入框输入"你好，请简单介绍一下你自己" → 点击发送
-- 预期：消息气泡出现在聊天区（用户消息右对齐，AI 回复左对齐）。AI 回复流式逐字显示。最终返回一个完整的回复
-- 记录：返回的完整回复内容摘要 + 是否流式显示
+### 测试 C1：AI 数据解析
+- 操作：`curl -X POST http://127.0.0.1:8765/api/parse-all`
+- 预期：返回 JSON，`stocks_parsed` >= 1，HTTP 200
+- 报告格式：`stocks_parsed` 值 + 解析出的行业名称 + PASS/FAIL
 
-**B2. 命令按钮**
-- 操作：点击快捷命令按钮 `/analyze-initial`
-- 预期：输入框自动填入 `/analyze-initial`
-- 操作：点击 `/help`
-- 预期：输入框自动填入 `/help`
+### 测试 D1：工作区 — 行业知识库数据
+- 操作：`curl http://127.0.0.1:8765/api/workspace`
+- 预期：`industries` 字段非空，包含行业名称和对应的产业链/TAM/财务数据
+- 报告格式：`industries` 包含的行业列表 + 每个行业的数据完整性 + PASS/FAIL
 
-**B3. 空消息处理**
-- 操作：不输入任何文字，直接点发送
-- 预期：不崩溃，有合理提示或忽略空消息
+### 测试 D2：工作区 — 投资逻辑数据
+- 操作：同上，检查 `theses` 字段
+- 预期：`theses` 包含至少一个标的（如 002463）的多空逻辑、信号、关键假设
+- 报告格式：`theses` 包含的标的列表 + 每个标的的 bull_theses/bear_theses/signals 是否填充 + PASS/FAIL
 
----
+### 测试 D3：工作区 — 跟踪指标数据
+- 操作：同上，检查 `tracking` 字段
+- 预期：`tracking` 包含至少一个标的的 indicators、events
+- 报告格式：`tracking` 包含的标的列表 + indicators 数量 + PASS/FAIL
 
-### 测试 C：AI 数据解析
+### 测试 E1：调研记录提交
+- 操作：`curl -X POST http://127.0.0.1:8765/api/research-note -H "Content-Type: application/json" -d '{"symbol":"002463","note":"6月24日调研：公司AI板出货量继续增长，毛利率维持在35%以上，产能利用率95%"}'`
+- 预期：返回 HTTP 200，响应中包含更新后的 indicators 和 events
+- 报告格式：响应内容 + indicators/events 是否有变化 + PASS/FAIL
 
-**C1. 触发解析**
-- 调用：`POST http://127.0.0.1:8765/api/parse-all`
-- 预期：返回 JSON 包含 `stocks_parsed` 字段（>=1），HTTP 200
-- 记录：`stocks_parsed` 的值 + 响应中的 `industries` 和 `tracking` 是否有数据
-
-**C2. 工作区数据验证**
-- 调用：`GET http://127.0.0.1:8765/api/workspace`
-- 预期：`industries` 不为空（至少有"半导体/电子"等行业）。`theses` 可能有 002463 的数据。`tracking` 可能有指标数据
-- 记录：`industries` 包含哪些行业。`theses` 包含哪些标的。`tracking` 包含哪些标的
-
----
-
-### 测试 D：研究员工作区 UI
-
-**D1. 行业知识库**
-- 操作：切换到"研究员工作区"Tab
-- 预期：行业卡片网格显示。点击某个行业卡片（如"半导体/电子"）→ 展开详情面板，显示产业链数据、TAM 数据、财务基准
-- 记录：详情面板是否正常渲染
-
-**D2. 投资逻辑看板**
-- 操作：在下拉选择器中选择"002463-沪电股份"
-- 预期：显示多空逻辑卡片（绿色多方卡片 + 红色空方卡片）。显示四维信号仪表盘
-- 记录：多空卡片数量。信号仪表盘是否显示四个维度
-
-**D3. 边际变化追踪**
-- 操作：查看跟踪指标区域
-- 预期：显示指标卡片网格。触发阈值的指标显示 🔴 状态灯
-- 操作：查看事件时间线
-- 预期：按日期倒序显示事件，🔴🟠 分级标签
-
-**D4. 调研输入**
-- 调用：`POST http://127.0.0.1:8765/api/research-note`  Body: `{"symbol":"002463","note":"6月24日调研：公司AI板出货量继续增长，毛利率维持在35%以上，产能利用率95%"}`
-- 预期：返回 HTTP 200。响应中包含更新后的 indicators 和 events
-- 记录：响应内容
+### 测试 E2：前端页面加载
+- 操作：用浏览器或 HTTP 请求打开 `web/index.html`
+- 预期：页面可正常加载，包含两个 Tab（投研对话 | 研究员工作区）
+- 报告格式：页面是否可访问 + Tab 是否存在 + PASS/FAIL
 
 ---
 
-### 测试 E：错误处理
+## 📋 每次执行后的操作
 
-**E1. 工作区无数据时**
-- 如果 `workspace-data.json` 不存在或为空
-- 预期：`GET /api/workspace` 返回空结构，前端不白屏，显示"暂无数据"
-
-**E2. 解析不存在的标的数据**
-- 验证选择尚无研报的标的时，看板不崩溃
-
----
-
-## ✅ 输出要求
-
-1. 每个测试步骤的执行结果（PASS/FAIL + 实际响应）
-2. 如果 FAIL，记录具体的错误信息
-3. 汇总：通过/失败的测试数
-4. 如果 AI 解析产生了文件，报告文件路径
-
-## 🔄 执行方式
-
-你对每个 API 端点发起 HTTP 请求（用 curl 或 Invoke-WebRequest），记录响应。对前端 UI 的测试，描述预期行为。
-
----
-
----
-
-## 🔄 执行-审查流程
-
-**全部测试完成后，必须执行以下操作：**
-
-1. 将所有测试结果写入 `.codex-claude/reviews/test-report.md`
+1. 将当前测试的执行结果追加写入 `.codex-claude/reviews/test-report.md`（追加模式，不要覆盖之前的记录）
 2. 更新 `.codex-claude/state.json`：
    - `checkpoint_status: "pending_review"`
-   - `phase: "testing"`
-   - `history` 追加一条：`{"checkpoint": 0, "round": 1, "status": "submitted", "timestamp": "当前时间"}`
-3. 在对话中输出："测试全部完成。测试报告已写入 .codex-claude/reviews/test-report.md。请 Claude 审查。"
-
-**Claude 审查通过后会自动推进 state.json，审查不通过会打回修复。**
+   - 将本次测试用例的执行记录追加到 `history`
+3. 输出："测试 [X] 已执行。结果已写入 test-report.md。请 Claude 审查。"
 
 ---
 
-**开始测试吧！**
+**开始执行 state.json 中标记为 pending 的第一个测试用例。**

@@ -2,61 +2,22 @@
   "project": "ai-investment-agent",
   "version": "0.2.0",
   "project_root": "C:\\Users\\jules\\Projects\\ai-investment-agent",
-  "current_checkpoint": 0,
-  "checkpoint_status": "pending",
   "phase": "testing",
-  "current_commit": "99d17ab",
+  "current_test": "A1",
+  "checkpoint_status": "pending",
   "review_round": 1,
-  "pending_issues": 0,
-  "total_checkpoints": 5,
-  "checkpoints": [
-    {
-      "name": "检查点 1: 项目脚手架 + 后端 API 骨架",
-      "description": "创建 web/ 目录结构和 Flask 后端的最小可运行版本",
-      "tasks": "1. 创建完整 web/ 目录结构\n2. index.html 骨架+暗色主题+Tab导航\n3. style.css 基础样式\n4. server.py Flask应用+4个stub端点\n5. parser.py 占位模块\n6. requirements.txt 新增flask",
-      "verification_criteria": "python web/api/server.py 无报错, curl /api/health 返回200, 浏览器打开index.html可见两个Tab"
-    },
-    {
-      "name": "检查点 2: 投研对话 — 聊天界面",
-      "description": "实现可用的 Claude 对话界面，支持流式响应和 MCP 工具调用展示",
-      "tasks": "1. chat.js 消息气泡+Markdown渲染\n2. SSE流式响应\n3. MCP工具调用折叠卡片\n4. 命令快捷按钮行\n5. server.py /api/chat 完整实现",
-      "verification_criteria": "输入消息有回复, 流式逐字显示, MCP调用展示为折叠卡片, 命令按钮可点击"
-    },
-    {
-      "name": "检查点 3: 数据解析器 + 工作区自动填充",
-      "description": "解析 reports/stocks/ 下的 Markdown 研报，提取结构化数据填充工作区",
-      "tasks": "🔴 方案变更：改为AI解析而非规则解析。1. parser.py → ai_extract() 调Claude API提取\n2. 三种extraction type各一个prompt模板\n3. /api/parse-all批量遍历\n4. workspace.js基础渲染",
-      "verification_criteria": "parse-all返回stocks_parsed>=1, 工作区Tab显示行业卡片和指标"
-    },
-    {
-      "name": "检查点 4: 研究员工作区 — 完整交互",
-      "description": "工作区三个子模块全部可交互",
-      "tasks": "1. workspace.js 行业知识库完整交互\n2. workspace.js 投资逻辑看板(多空卡片+信号仪表盘)\n3. workspace.js 边际变化追踪(指标+事件+调研输入)\n4. /api/research-note 端点",
-      "verification_criteria": "点击行业→详情, 选标的→多空卡片, 指标触发阈值显示🔴, 调研输入自动更新"
-    },
-    {
-      "name": "检查点 5: 集成测试 + 文档更新",
-      "description": "端到端验证，文档完整",
-      "tasks": "1. 端到端可用性验证\n2. 错误处理(空数据/API失败/解析异常)\n3. docs/使用手册.md 新增Web章节\n4. README.md 新增Web启动说明\n5. self-test.py 新增Web API检查",
-      "verification_criteria": "全流程无阻塞, 已有研报正确解析, 旧格式不崩溃, 文档完整"
-    }
+  "tests": [
+    {"id": "A1", "name": "健康检查", "status": "pending", "passed": false},
+    {"id": "A2", "name": "模型列表", "status": "pending", "passed": false},
+    {"id": "A3", "name": "工作区空数据", "status": "pending", "passed": false},
+    {"id": "B1", "name": "投研对话-基础消息", "status": "pending", "passed": false},
+    {"id": "B2", "name": "投研对话-命令按钮", "status": "pending", "passed": false},
+    {"id": "C1", "name": "AI数据解析", "status": "pending", "passed": false},
+    {"id": "D1", "name": "工作区-行业知识库", "status": "pending", "passed": false},
+    {"id": "D2", "name": "工作区-投资逻辑", "status": "pending", "passed": false},
+    {"id": "D3", "name": "工作区-跟踪指标", "status": "pending", "passed": false},
+    {"id": "E1", "name": "调研记录提交", "status": "pending", "passed": false},
+    {"id": "E2", "name": "前端页面加载", "status": "pending", "passed": false}
   ],
-  "history": [
-    {
-      "checkpoint": 1,
-      "round": 1,
-      "score": 55,
-      "urgent": 3,
-      "timestamp": "2026-06-23T20:30:00",
-      "status": "failed"
-    },
-    {
-      "checkpoint": 1,
-      "round": 2,
-      "score": 85,
-      "urgent": 0,
-      "timestamp": "2026-06-23T20:35:00",
-      "status": "passed"
-    }
-  ]
+  "history": []
 }
