@@ -4,7 +4,7 @@
 >
 > 🔴 **启动指令**（用户只需执行一次，之后全部自动）：
 > 将以下内容发送给 Codex：
-> "请持续监控 .codex-claude/state.json。当 current_checkpoint > 0 且 checkpoint_status 为 pending 时，自动读取 .codex-claude/plan.md 执行当前检查点。每完成一个检查点后等待 Claude 审查 state.json，审查通过则自动进入下一个检查点，审查不通过则按审查报告修复后重新提交。"
+> "请持续监控 .codex-claude/state.json。当 current_checkpoint > 0 且 checkpoint_status 不为 completed 时，根据状态自动执行对应操作。流程详见 .codex-claude/codex-prompt.md。"
 
 ---
 

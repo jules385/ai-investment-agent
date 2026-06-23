@@ -19,7 +19,7 @@ v0.2.0 的任务是**在此基础上新增 HTML 前端界面**，不修改已有
 用户将以下指令发送给你后，你开始持续运行：
 
 ```
-请持续监控 .codex-claude/state.json。当 current_checkpoint > 0 且 checkpoint_status 为 "pending" 时，自动读取 .codex-claude/plan.md 执行当前检查点。每完成一个检查点后等待 Claude 审查 state.json，审查通过则自动进入下一个检查点，审查不通过则按审查报告修复后重新提交。
+请持续监控 .codex-claude/state.json。当 current_checkpoint > 0 且 checkpoint_status 不为 "completed" 时，根据状态执行对应操作。每完成一个检查点后等待 Claude 审查 state.json，审查通过则自动进入下一个检查点，审查不通过则按审查报告修复后重新提交。
 ```
 
 ### 执行循环
@@ -28,36 +28,42 @@ v0.2.0 的任务是**在此基础上新增 HTML 前端界面**，不修改已有
 ① 读取 state.json
       │
       ▼
-② current_checkpoint=N, status="pending" → 读取 plan.md 检查点 N
+② 判断 checkpoint_status：
       │
-      ▼
+      ├── "completed" → 输出 "全部完成。" → 停止轮询
+      │
+      ├── "pending_review" → 等待 Claude 审查，继续轮询
+      │
+      └── 其他（"not_started" / "pending"）→ 读取 plan.md 检查点 current_checkpoint
+            │
+            ▼
 ③ 执行检查点 N 的全部任务清单 → git add + git commit
-      │
-      ▼
+            │
+            ▼
 ④ 更新 state.json：
    checkpoint_status: "pending_review"
    history 追加: {"checkpoint": N, "round": X, "status": "submitted", "timestamp": "..."}
-      │
-      ▼
+            │
+            ▼
 ⑤ 输出："检查点 N 第 X 轮已提交，等待 Claude 审查。"
-      │
-      ▼
+            │
+            ▼
 ⑥ 持续轮询 state.json（每 30 秒检查一次），等待 Claude 更新
-      │
-      ├── Claude 审查通过：
-      │     state.json 变为 current_checkpoint=N+1, status="pending"
-      │     → 回到①，执行下一个检查点
-      │
-      ├── Claude 审查不通过：
-      │     state.json 中 current_checkpoint 不变，status="pending"
-      │     且 history 中有新的 review 记录（含 urgent 项）
-      │     → 读取 .codex-claude/reviews/ 下最新审查报告
-      │     → 按 urgent 项的 fix 指令修复
-      │     → 回到④
-      │
-      └── state.json 中 phase="completed"
-            → 输出："全部检查点已完成。项目交付。"
-            → 停止轮询
+            │
+            ├── Claude 审查通过：
+            │     state.json 变为 current_checkpoint=N+1, status != "completed"
+            │     → 回到①，执行下一个检查点
+            │
+            ├── Claude 审查不通过：
+            │     state.json 中 current_checkpoint 不变
+            │     且 history 中有新的 review 记录（含 urgent 项）
+            │     → 读取 .codex-claude/reviews/ 下最新审查报告
+            │     → 按 urgent 项的 fix 指令修复
+            │     → 回到④
+            │
+            └── state.json 中 phase="completed"
+                  → 输出："全部检查点已完成。项目交付。"
+                  → 停止轮询
 ```
 
 ### 每个检查点的执行步骤
