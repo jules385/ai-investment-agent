@@ -39,6 +39,7 @@ Thumbs.db
 
 # HTML 报告（含真实数据）
 /reports/stocks/**/*.html
+/reports/workspace-data.json
 
 # Windows 快捷方式
 *.lnk

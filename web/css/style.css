@@ -25,7 +25,8 @@ body {
 }
 
 button,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -302,6 +303,16 @@ textarea {
   padding: 10px 12px;
 }
 
+select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--bor);
+  border-radius: 6px;
+  background: #111520;
+  color: var(--hl);
+  padding: 8px 10px;
+}
+
 .command-grid {
   display: grid;
   gap: 10px;
@@ -325,11 +336,20 @@ textarea {
   gap: 12px;
 }
 
+.industry-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.workspace-control {
+  padding: 0;
+}
+
 .mini-card {
   padding: 12px;
   border: 1px solid var(--bor);
   border-radius: 6px;
   background: #151925;
+  white-space: pre-line;
 }
 
 .mini-card strong {

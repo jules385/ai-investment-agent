@@ -227,12 +227,29 @@ def models():
 
 @app.post("/api/parse-all")
 def parse_all():
-    return jsonify(parse_all_reports(BASE_DIR / "reports" / "stocks"))
+    data = parse_all_reports(BASE_DIR / "reports" / "stocks")
+    WORKSPACE_DATA.parent.mkdir(parents=True, exist_ok=True)
+    WORKSPACE_DATA.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return jsonify(
+        {
+            "status": "ok",
+            "stocks_parsed": data.get("stocks_parsed", 0),
+            "output": str(WORKSPACE_DATA),
+            "industries": len(data.get("industries", {})),
+            "theses": len(data.get("theses", {})),
+            "tracking": len(data.get("tracking", {})),
+        }
+    )
 
 
 @app.get("/api/workspace")
 def workspace():
-    return jsonify(empty_workspace())
+    if not WORKSPACE_DATA.exists():
+        return jsonify(empty_workspace())
+    try:
+        return jsonify(json.loads(WORKSPACE_DATA.read_text(encoding="utf-8")))
+    except json.JSONDecodeError:
+        return jsonify(empty_workspace())
 
 
 @app.post("/api/research-note")
