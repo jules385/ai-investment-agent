@@ -1,177 +1,110 @@
-# 实施任务: 检查点 5: 集成测试 + 文档更新（最后一步）
+# 测试任务: v0.2.0 前端验收测试
 
 ## 📋 任务描述
 
-端到端验证全部功能，完善错误处理，更新文档。
+对 v0.2.0 已完成的 Web 前端进行全面验收测试。服务器已在 `http://127.0.0.1:8765` 运行（DeepSeek API 已配置）。你需要从前端页面发起测试，记录每次 API 调用的请求/响应日志，输出测试结果。
 
-## 🔨 具体任务
+## 🔨 测试步骤（必须逐项执行并报告）
 
-1. 端到端验证：`python web/api/server.py` 启动 → 浏览器打开 `web/index.html` → 投研对话 Tab 发消息 → 工作区 Tab 点击行业卡片 → 选择标的 → 查看多空逻辑和跟踪指标
-2. `web/api/server.py`：全局错误处理。API 不可用时返回友好降级提示。文件缺失时不崩溃
-3. `web/js/app.js`：全局错误处理。网络断开提示 toast。API 错误 toast。数据加载中 loading 状态
-4. `docs/使用手册.md`：新增"Web 前端使用"章节。启动步骤 + 界面说明 + 工作区功能介绍
-5. `README.md`：新增 Web 前端快速启动（`python web/api/server.py` → 浏览器打开 `web/index.html`）
-6. `tools/self-test.py`：新增 Web API 存活检查（`curl localhost:8765/api/health`）
-7. 清理调试代码（如有 console.log）
-8. `requirements.txt` 确认 `flask>=3.0.0` 和 `flask-cors>=4.0.0` 已添加
+### 测试 A：API 端点基础连通性
 
-## ✅ 验收标准
+**A1. 健康检查**
+- 调用：`GET http://127.0.0.1:8765/api/health`
+- 预期：返回 `{"status":"ok"}`，HTTP 200
+- 记录：响应内容 + 状态码
 
-- 全流程无阻塞：启动→打开→对话→解析→工作区
-- 已有研报（002463 等）正确解析并显示
-- 旧格式报告不崩溃
-- 文档更新完整
-- self-test.py 通过
+**A2. 模型列表**
+- 调用：`GET http://127.0.0.1:8765/api/models`
+- 预期：返回包含 `claude-sonnet-4-20250514` 和 `deepseek-v4-pro` 的数组，HTTP 200
+- 记录：响应内容 + 状态码
 
-## ⚠️ 注意
-
-- 只修改上述文件，不动 `skills/` `commands/` `mcp-servers/` `parser.py`
-
-## 📋 任务描述
-
-基于检查点 3 已完成的 AI 解析器（`workspace-data.json` 已可由 `/api/parse-all` 生成），实现工作区三个子模块的完整交互：行业知识库详情页、投资逻辑看板（多空卡片+信号仪表盘）、边际变化追踪（指标卡片+事件时间线+调研输入）。
-
-## 🔨 具体任务
-
-### 4a. 行业知识库交互
-
-`web/js/workspace.js`：
-- 2.1.1 已有行业卡片网格 → 点击某个行业卡片 → 展开详情面板
-- 详情面板显示：产业链文本树（`.chain-tree` 样式）、TAM/CAGR 数据卡片、可比公司财务基准表
-- 从 `workspace-data.json` 的 `industries[industry]` 读取数据渲染
-
-### 4b. 投资逻辑看板
-
-`web/js/workspace.js`：
-- 2.2.1 标的下拉选择器 → 选择标的 → 显示看板
-- 2.2.2 多空逻辑面板：`.bull-card`（绿色左边框）+ `.bear-card`（红色左边框），每张卡片显示逻辑陈述 + 证据 + 验证状态标签
-- 2.2.3 四维信号仪表盘：四个信号卡片（基本面/筹码面/技术面/情绪面），每个显示方向图标（🟢🔴🟡）+ 强度 + 评分
-- 2.2.4 决策记录列表：日期 + 评级 + 操作建议
-
-### 4c. 边际变化追踪
-
-`web/js/workspace.js`：
-- 2.3.1 跟踪指标卡片网格：每个指标一张卡，显示名称/最新值/阈值/状态灯（🟢正常 ⚠️接近 🔴触发）
-- 2.3.2 事件时间线：按日期倒序，🔴🟠🟡 分级标签，点击展开详情
-- 2.3.3 调研输入框：textarea + 提交按钮 → `POST /api/research-note` → 用 AI 解析调研记录 → 更新指标和事件
-
-### 4d. 调研记录 AI 处理
-
-`web/api/server.py`：`/api/research-note` 端点实现。接收 `{symbol, note}`，调用 Claude API 解析调研记录中的指标变化和事件，合并到 `workspace-data.json` 的 tracking 部分。
-
-### 4e. 样式
-
-`web/css/style.css`：新增工作区全部样式——行业卡片、产业链文本树、TAM 数据卡片、多空逻辑卡片（`.bull-card` / `.bear-card`）、信号仪表盘、指标卡片网格、事件时间线、调研输入框、状态灯动画。
-
-## ✅ 验收标准
-
-- 点击行业卡片 → 详情面板显示产业链+TAM+财务基准
-- 选择标的 → 多空逻辑卡片正确显示绿色/红色边框
-- 四维信号仪表盘显示方向/强度/评分
-- 跟踪指标中触发阈值的显示 🔴 状态灯
-- 在调研框输入文字 → 提交 → POST /api/research-note 返回成功
-- 所有数据来自 `workspace-data.json`，无硬编码
-
-## ⚠️ 不修改
-
-- `web/api/parser.py` `web/js/chat.js` `skills/` `commands/` `mcp-servers/` `tools/` `knowledge/` `docs/`
-
-## ⚠️ 不要修改的文件
-
-- `skills/analysts/` 下的任何 SKILL.md
-- `commands/` 下的任何命令文件
-- `mcp-servers/` 下的任何 Python 文件
-- `tools/` 下的任何文件（除了 `self-test.py` 在检查点5可改）
-- `knowledge/` `docs/` `workspace-template/` 下的任何文件
+**A3. 工作区空数据**
+- 调用：`GET http://127.0.0.1:8765/api/workspace`
+- 预期：返回 `{"industries":{},"theses":{},"tracking":{}}`，HTTP 200
+- 记录：响应内容 + 状态码
 
 ---
 
-## 📚 项目上下文
+### 测试 B：投研对话功能
 
-A股AI投研系统 v0.2.0 — 基于多智能体架构的二级市场投资研究平台。v0.1.0 已完成并发布。v0.2.0 新增 HTML 前端界面。
+**B1. 基础对话**
+- 操作：打开 `web/index.html` → 切换到"投研对话"Tab → 在输入框输入"你好，请简单介绍一下你自己" → 点击发送
+- 预期：消息气泡出现在聊天区（用户消息右对齐，AI 回复左对齐）。AI 回复流式逐字显示。最终返回一个完整的回复
+- 记录：返回的完整回复内容摘要 + 是否流式显示
 
-### 技术栈
+**B2. 命令按钮**
+- 操作：点击快捷命令按钮 `/analyze-initial`
+- 预期：输入框自动填入 `/analyze-initial`
+- 操作：点击 `/help`
+- 预期：输入框自动填入 `/help`
 
-Python 3.10+, Flask（v0.2.0新增）, MCP 协议, AKShare, ta, pandas
-
-### 已有项目结构（只读）
-
-```
-ai-investment-agent/
-├── skills/analysts/     ← 8 个 AI 角色 Skill（Markdown + YAML）
-├── commands/            ← 8 条斜杠命令（Markdown）
-├── mcp-servers/         ← 2 个 MCP Server（Python, stdio）
-│   ├── finance-data/    ← 15 个工具
-│   └── tech-analysis/   ← 10 个工具
-├── tools/               ← md-to-html.py, self-test.py
-├── knowledge/           ← 方法论手册
-├── docs/                ← 使用手册 + 产品手册
-├── workspace-template/  ← 用户工作区模板
-├── reports/             ← 用户数据（不进入 Git）
-├── requirements.txt     ← Python 依赖
-├── install.py           ← 一键安装脚本
-└── .codex-claude/       ← 开发协作配置
-```
-
-### v0.2.0 新增范围
-
-只创建 `web/` 目录，只修改 `requirements.txt`。不动任何已有文件。
-
-## 📐 代码规范
-
-- 前端：纯 HTML + CSS + Vanilla JS，零框架。marked.js CDN 加载
-- 后端：Python Flask，端口 8765，CORS 允许
-- CSS：复用项目暗色主题变量
-- 所有路径使用 `pathlib.Path`
-
-## 🔄 Git 规范
-
-- 格式: `feat: <描述>` / `fix: <描述>`
-- 每个功能完成后做一次 commit
+**B3. 空消息处理**
+- 操作：不输入任何文字，直接点发送
+- 预期：不崩溃，有合理提示或忽略空消息
 
 ---
 
----
+### 测试 C：AI 数据解析
 
-## 📋 全部检查点概览（供参考，当前只执行检查点 1）
+**C1. 触发解析**
+- 调用：`POST http://127.0.0.1:8765/api/parse-all`
+- 预期：返回 JSON 包含 `stocks_parsed` 字段（>=1），HTTP 200
+- 记录：`stocks_parsed` 的值 + 响应中的 `industries` 和 `tracking` 是否有数据
 
-### 检查点 1: 项目脚手架 + 后端 API 骨架
-- **目标**: 创建 `web/` 目录结构和 Flask 后端的最小可运行版本
-- **验证**: `python web/api/server.py` 无报错, `curl /api/health` → 200
-
-### 检查点 2: 投研对话 — 聊天界面
-- **目标**: 实现 Claude 对话界面，SSE 流式响应，MCP 工具调用展示
-- **验证**: 输入消息有回复, 流式逐字显示
-
-### 检查点 3: 数据解析器 + 工作区自动填充
-- **目标**: 解析 Markdown 研报，提取结构化数据填充工作区
-- **验证**: parse-all 返回 stocks_parsed >= 1, 工作区 Tab 显示行业卡片
-
-### 检查点 4: 研究员工作区 — 完整交互
-- **目标**: 工作区三个子模块（知识库/看板/追踪）全部可交互
-- **验证**: 点击行业→详情, 选标的→多空卡片, 指标触发阈值显示🔴
-
-### 检查点 5: 集成测试 + 文档更新
-- **目标**: 端到端验证，文档完整
-- **验证**: 全流程无阻塞, 已有研报正确解析, 旧格式不崩溃
+**C2. 工作区数据验证**
+- 调用：`GET http://127.0.0.1:8765/api/workspace`
+- 预期：`industries` 不为空（至少有"半导体/电子"等行业）。`theses` 可能有 002463 的数据。`tracking` 可能有指标数据
+- 记录：`industries` 包含哪些行业。`theses` 包含哪些标的。`tracking` 包含哪些标的
 
 ---
 
-## 📡 API 契约
+### 测试 D：研究员工作区 UI
 
-```
-POST /api/chat           → SSE 流式对话
-POST /api/parse-all      → 解析全部研报 → workspace-data.json
-GET  /api/workspace      → 读取 workspace-data.json
-POST /api/research-note  → 提交调研记录 → AI解析 → 更新 workspace-data.json
-GET  /api/health         → 健康检查
-```
+**D1. 行业知识库**
+- 操作：切换到"研究员工作区"Tab
+- 预期：行业卡片网格显示。点击某个行业卡片（如"半导体/电子"）→ 展开详情面板，显示产业链数据、TAM 数据、财务基准
+- 记录：详情面板是否正常渲染
 
-## 🗂️ 工作目录
+**D2. 投资逻辑看板**
+- 操作：在下拉选择器中选择"002463-沪电股份"
+- 预期：显示多空逻辑卡片（绿色多方卡片 + 红色空方卡片）。显示四维信号仪表盘
+- 记录：多空卡片数量。信号仪表盘是否显示四个维度
 
-项目根目录: `C:\Users\jules\Projects\ai-investment-agent`
-所有文件路径相对于此目录。Git 操作也在此目录下执行。
+**D3. 边际变化追踪**
+- 操作：查看跟踪指标区域
+- 预期：显示指标卡片网格。触发阈值的指标显示 🔴 状态灯
+- 操作：查看事件时间线
+- 预期：按日期倒序显示事件，🔴🟠 分级标签
+
+**D4. 调研输入**
+- 调用：`POST http://127.0.0.1:8765/api/research-note`  Body: `{"symbol":"002463","note":"6月24日调研：公司AI板出货量继续增长，毛利率维持在35%以上，产能利用率95%"}`
+- 预期：返回 HTTP 200。响应中包含更新后的 indicators 和 events
+- 记录：响应内容
 
 ---
 
-**开始实施吧！做完后请 Claude 来审查你的工作。**
+### 测试 E：错误处理
+
+**E1. 工作区无数据时**
+- 如果 `workspace-data.json` 不存在或为空
+- 预期：`GET /api/workspace` 返回空结构，前端不白屏，显示"暂无数据"
+
+**E2. 解析不存在的标的数据**
+- 验证选择尚无研报的标的时，看板不崩溃
+
+---
+
+## ✅ 输出要求
+
+1. 每个测试步骤的执行结果（PASS/FAIL + 实际响应）
+2. 如果 FAIL，记录具体的错误信息
+3. 汇总：通过/失败的测试数
+4. 如果 AI 解析产生了文件，报告文件路径
+
+## 🔄 执行方式
+
+你对每个 API 端点发起 HTTP 请求（用 curl 或 Invoke-WebRequest），记录响应。对前端 UI 的测试，描述预期行为。
+
+---
+
+**开始测试吧！完成后我会请 Claude 审查测试报告。**
