@@ -1,0 +1,303 @@
+:root {
+  --bg: #0f1117;
+  --card: #1a1d28;
+  --bor: #2a2d3a;
+  --tx: #c9d1d9;
+  --hl: #f0f6fc;
+  --bl: #58a6ff;
+  --gn: #3fb950;
+  --rd: #f85149;
+  --yl: #d2991d;
+  --muted: #8b949e;
+  --shadow: rgba(0, 0, 0, 0.28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--bg);
+  color: var(--tx);
+  font-family: Inter, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 1px solid var(--bor);
+  border-radius: 6px;
+  background: #212536;
+  color: var(--hl);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+button:hover {
+  border-color: var(--bl);
+  background: #273047;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px clamp(20px, 5vw, 56px) 18px;
+  border-bottom: 1px solid var(--bor);
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--bl);
+  font-size: 13px;
+}
+
+h1,
+h2 {
+  margin: 0;
+  color: var(--hl);
+  letter-spacing: 0;
+}
+
+h1 {
+  font-size: 28px;
+}
+
+h2 {
+  font-size: 18px;
+}
+
+.status-pill,
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid var(--bor);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gn);
+}
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  padding: 18px clamp(20px, 5vw, 56px) 0;
+}
+
+.tab-btn {
+  min-width: 132px;
+  min-height: 40px;
+  padding: 8px 14px;
+}
+
+.tab-btn.active {
+  border-color: var(--bl);
+  background: rgba(88, 166, 255, 0.16);
+  color: var(--hl);
+}
+
+main {
+  padding: 22px clamp(20px, 5vw, 56px) 48px;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.panel-grid,
+.workspace-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.chat-layout {
+  grid-template-columns: minmax(0, 1fr) 280px;
+}
+
+.workspace-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.card {
+  min-width: 0;
+  border: 1px solid var(--bor);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: 0 16px 40px var(--shadow);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px;
+  border-bottom: 1px solid var(--bor);
+}
+
+.chat-card {
+  min-height: 560px;
+  display: flex;
+  flex-direction: column;
+}
+
+.message-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  overflow: auto;
+}
+
+.message {
+  max-width: 82%;
+  padding: 12px 14px;
+  border: 1px solid var(--bor);
+  border-radius: 8px;
+  background: #202433;
+}
+
+.message.user {
+  align-self: flex-end;
+  border-color: rgba(88, 166, 255, 0.45);
+  background: rgba(88, 166, 255, 0.12);
+}
+
+.message-role {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.message-body {
+  line-height: 1.6;
+}
+
+.chat-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 12px;
+  padding: 18px;
+  border-top: 1px solid var(--bor);
+}
+
+textarea {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  border: 1px solid var(--bor);
+  border-radius: 6px;
+  background: #111520;
+  color: var(--hl);
+  padding: 10px 12px;
+}
+
+.command-grid {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+}
+
+.command-grid button {
+  min-height: 38px;
+}
+
+.empty-state,
+.workspace-list {
+  padding: 18px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.workspace-list {
+  display: grid;
+  gap: 12px;
+}
+
+.mini-card {
+  padding: 12px;
+  border: 1px solid var(--bor);
+  border-radius: 6px;
+  background: #151925;
+}
+
+.mini-card strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--hl);
+}
+
+.status-green {
+  color: var(--gn);
+}
+
+.status-red {
+  color: var(--rd);
+}
+
+.status-yellow {
+  color: var(--yl);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 10px;
+  border-bottom: 1px solid var(--bor);
+  text-align: left;
+}
+
+th {
+  color: var(--hl);
+}
+
+@media (max-width: 900px) {
+  .chat-layout,
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tabs {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .chat-form {
+    grid-template-columns: 1fr;
+  }
+
+  .message {
+    max-width: 100%;
+  }
+}

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 投研工作台</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+  <script src="js/workspace.js" defer></script>
+  <script src="js/chat.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">AI Investment Agent</p>
+      <h1>投研工作台</h1>
+    </div>
+    <div class="status-pill">
+      <span class="status-dot"></span>
+      <span>v0.2.0</span>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="主导航">
+    <button class="tab-btn active" type="button" data-tab="chat">投研对话</button>
+    <button class="tab-btn" type="button" data-tab="workspace">研究员工作区</button>
+  </nav>
+
+  <main>
+    <section id="chat" class="tab-panel active" aria-labelledby="投研对话">
+      <div class="panel-grid chat-layout">
+        <section class="card chat-card">
+          <div class="card-header">
+            <h2>对话</h2>
+            <span class="tag">Stub</span>
+          </div>
+          <div id="chatMessages" class="message-list" aria-live="polite">
+            <article class="message assistant">
+              <div class="message-role">AI</div>
+              <div class="message-body">你好，我是投研助手。当前检查点提供基础对话占位能力。</div>
+            </article>
+          </div>
+          <form id="chatForm" class="chat-form">
+            <textarea id="chatInput" rows="3" placeholder="输入投研问题..." required></textarea>
+            <button type="submit">发送</button>
+          </form>
+        </section>
+
+        <aside class="card">
+          <div class="card-header">
+            <h2>快捷命令</h2>
+          </div>
+          <div class="command-grid">
+            <button type="button" data-prompt="分析这家公司基本面">基本面</button>
+            <button type="button" data-prompt="检查技术面信号">技术面</button>
+            <button type="button" data-prompt="总结资金流向">资金面</button>
+            <button type="button" data-prompt="生成投研结论">结论</button>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="workspace" class="tab-panel" aria-labelledby="研究员工作区">
+      <div class="workspace-grid">
+        <section class="card">
+          <div class="card-header">
+            <h2>行业知识库</h2>
+            <span id="industryCount" class="tag">0</span>
+          </div>
+          <div id="knowledgeBase" class="empty-state">暂无行业数据</div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h2>投资逻辑看板</h2>
+            <span id="thesisCount" class="tag">0</span>
+          </div>
+          <div id="thesesBoard" class="empty-state">暂无投资逻辑</div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h2>边际变化追踪</h2>
+            <span id="trackingCount" class="tag">0</span>
+          </div>
+          <div id="trackingBoard" class="empty-state">暂无追踪事项</div>
+        </section>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
