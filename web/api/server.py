@@ -397,11 +397,50 @@ def workspace():
 @app.post("/api/research-note")
 def research_note():
     payload = request.get_json(silent=True) or {}
+    symbol = str(payload.get("symbol", "")).strip()
+    note = str(payload.get("note", "")).strip()
+
+    if not symbol or not note:
+        return jsonify({"status": "error", "message": "symbol and note are required"}), 400
+
+    if WORKSPACE_DATA.exists():
+        try:
+            workspace_data = json.loads(WORKSPACE_DATA.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            workspace_data = empty_workspace()
+    else:
+        workspace_data = empty_workspace()
+
+    extraction = ai_extract(note, "tracking_data")
+    extracted = extraction.get("extracted") if isinstance(extraction.get("extracted"), dict) else {}
+    tracking = workspace_data.setdefault("tracking", {}).setdefault(
+        symbol,
+        {"indicators": [], "events": [], "decisions": []},
+    )
+    tracking.setdefault("indicators", []).extend(extracted.get("indicators", []))
+    tracking.setdefault("events", []).extend(extracted.get("events", []))
+    tracking.setdefault("decisions", []).extend(extracted.get("decisions", []))
+
+    if extraction.get("error"):
+        tracking.setdefault("events", []).append(
+            {
+                "date": datetime.now().date().isoformat(),
+                "description": f"Research note saved, AI extraction failed: {extraction.get('error')}",
+                "severity": "minor",
+                "source_report": "research-note",
+            }
+        )
+
+    workspace_data.setdefault("stocks", {}).setdefault(symbol, {"stock": symbol, "name": symbol})
+    WORKSPACE_DATA.parent.mkdir(parents=True, exist_ok=True)
+    WORKSPACE_DATA.write_text(json.dumps(workspace_data, ensure_ascii=False, indent=2), encoding="utf-8")
+
     return jsonify(
         {
-            "status": "received",
-            "note": payload.get("note", ""),
-            "workspace": empty_workspace(),
+            "status": "ok",
+            "symbol": symbol,
+            "error": extraction.get("error"),
+            "tracking": tracking,
         }
     )
 
