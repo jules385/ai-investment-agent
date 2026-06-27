@@ -1,6 +1,8 @@
 import json
 import os
 import re
+import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
 import sys
@@ -21,8 +23,18 @@ from web.api.parser import ai_extract
 WORKSPACE_DATA = BASE_DIR / "reports" / "workspace-data.json"
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
-DEFAULT_MODEL = "claude-sonnet-4-20250514"
+ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
 DEEPSEEK_MODEL = "deepseek-v4-pro"
+DEFAULT_MODEL = DEEPSEEK_MODEL
+AGENT_COMMANDS = {
+    "/analyze-initial",
+    "/analyze-weekly",
+    "/analyze-monthly",
+    "/analyze-quarterly",
+    "/analyze-annual",
+    "/analyze-portfolio-weekly",
+    "/beautify-report",
+}
 
 app = Flask(__name__)
 CORS(app)
@@ -83,6 +95,182 @@ def normalize_history(history: list, message: str) -> list:
     return messages
 
 
+def is_agent_command(message: str) -> bool:
+    command = str(message or "").strip().split(maxsplit=1)[0]
+    return command in AGENT_COMMANDS
+
+
+def claude_executable() -> str | None:
+    configured = os.getenv("CLAUDE_CODE_BIN")
+    if configured:
+        return configured
+    return shutil.which("claude.cmd") or shutil.which("claude")
+
+
+def load_claude_agents() -> dict:
+    agents = {}
+    skills_dir = BASE_DIR / "skills" / "analysts"
+    for skill_file in sorted(skills_dir.glob("*/SKILL.md")):
+        name = skill_file.parent.name
+        try:
+            skill_text = skill_file.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            skill_text = skill_file.read_text(encoding="utf-8-sig")
+        description_match = re.search(r"^description:\s*(.+)$", skill_text, re.MULTILINE)
+        relative_skill_path = skill_file.relative_to(BASE_DIR).as_posix()
+        agents[name] = {
+            "description": description_match.group(1).strip() if description_match else name,
+            "prompt": (
+                f"You are @{name}. Before doing any task, read `{relative_skill_path}` "
+                "from the current repository and follow it exactly. Use the repository root as "
+                "your working directory, and write any requested report files to the paths "
+                "specified by the chief analyst prompt."
+            ),
+        }
+    return agents
+
+
+def extract_stream_text(payload: dict) -> str:
+    payload_type = payload.get("type")
+    if payload_type == "assistant":
+        message = payload.get("message", {})
+        content = message.get("content", [])
+        parts = []
+        for block in content:
+            if block.get("type") == "text" and block.get("text"):
+                parts.append(block.get("text"))
+        return "".join(parts)
+    if payload_type == "content_block_delta":
+        delta = payload.get("delta", {})
+        return delta.get("text", "")
+    if payload_type == "text":
+        return payload.get("text", "")
+    if payload_type == "result":
+        return payload.get("result", "")
+    return ""
+
+
+def extract_tool_events(payload: dict) -> list[dict]:
+    events = []
+    payload_type = payload.get("type")
+    if payload_type == "system":
+        subtype = payload.get("subtype", "system")
+        detail = {
+            key: payload.get(key)
+            for key in ("cwd", "session_id", "attempt", "max_retries", "retry_delay_ms", "error", "error_status")
+            if key in payload
+        }
+        events.append({"name": f"Claude Code {subtype}", "status": subtype, "detail": detail})
+    elif payload_type == "assistant":
+        for block in payload.get("message", {}).get("content", []):
+            if block.get("type") == "tool_use":
+                events.append(
+                    {
+                        "name": block.get("name", "tool"),
+                        "status": "tool_use",
+                        "detail": block.get("input", {}),
+                    }
+                )
+    elif payload_type in {"tool_use", "tool_result"}:
+        events.append(
+            {
+                "name": payload.get("name") or payload_type,
+                "status": payload_type,
+                "detail": payload.get("input") or payload.get("content") or payload,
+            }
+        )
+    return events
+
+
+def stream_claude_code(message: str):
+    executable = claude_executable()
+    if not executable:
+        yield sse("error", {"message": "Claude Code executable was not found. Install Claude Code or set CLAUDE_CODE_BIN."})
+        return
+
+    permission_mode = os.getenv("CLAUDE_PERMISSION_MODE", "acceptEdits")
+    args = [
+        executable,
+        "--print",
+        "--verbose",
+        "--output-format",
+        "stream-json",
+        "--include-partial-messages",
+        "--permission-mode",
+        permission_mode,
+        "--agents",
+        json.dumps(load_claude_agents(), ensure_ascii=False),
+        message,
+    ]
+    env = os.environ.copy()
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+
+    yield sse(
+        "tool_call",
+        {
+            "name": "Claude Code",
+            "status": "running",
+            "detail": {
+                "command": message,
+                "cwd": str(BASE_DIR),
+                "permission_mode": permission_mode,
+            },
+        },
+    )
+
+    try:
+        process = subprocess.Popen(
+            args,
+            cwd=BASE_DIR,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            bufsize=1,
+        )
+    except OSError as error:
+        yield sse("error", {"message": f"Unable to start Claude Code: {error}"})
+        return
+
+    emitted = ""
+    assert process.stdout is not None
+    for line in process.stdout:
+        text = line.strip()
+        if not text:
+            continue
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            yield sse("token", {"text": f"{text}\n"})
+            continue
+
+        chunk = extract_stream_text(payload)
+        if chunk:
+            # Claude stream-json may send cumulative partial messages. Emit only the suffix.
+            if chunk.startswith(emitted):
+                next_chunk = chunk[len(emitted):]
+                emitted = chunk
+            else:
+                next_chunk = chunk
+                emitted += chunk
+            if next_chunk:
+                yield sse("token", {"text": next_chunk})
+
+        for tool_event in extract_tool_events(payload):
+            yield sse(
+                "tool_call",
+                tool_event,
+            )
+
+    return_code = process.wait()
+    if return_code != 0:
+        yield sse("error", {"message": f"Claude Code exited with status {return_code}."})
+        return
+    yield sse("done", {})
+
+
 def stream_anthropic(message: str, history: list, model: str):
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -90,7 +278,7 @@ def stream_anthropic(message: str, history: list, model: str):
         return
 
     body = {
-        "model": model or DEFAULT_MODEL,
+        "model": model or ANTHROPIC_MODEL,
         "max_tokens": 4096,
         "system": SYSTEM_PROMPT,
         "messages": normalize_history(history, message),
@@ -227,7 +415,10 @@ def chat():
         if not message:
             yield sse("error", {"message": "Message cannot be empty."})
             return
-        if model == DEEPSEEK_MODEL:
+        if is_agent_command(message):
+            yield from stream_claude_code(message)
+            return
+        if model == DEEPSEEK_MODEL or (model == ANTHROPIC_MODEL and not os.getenv("ANTHROPIC_API_KEY") and os.getenv("DEEPSEEK_API_KEY")):
             yield from stream_deepseek(message, history)
         else:
             yield from stream_anthropic(message, history, model)
@@ -237,7 +428,7 @@ def chat():
 
 @app.get("/api/models")
 def models():
-    return jsonify([DEFAULT_MODEL, DEEPSEEK_MODEL])
+    return jsonify([ANTHROPIC_MODEL, DEEPSEEK_MODEL])
 
 
 def read_report_text(path: Path) -> str:
@@ -308,13 +499,14 @@ def parse_all_reports_with_ai(reports_dir: Path) -> dict:
         stock_key, code, name = stock_identity(stock_dir)
         initial_text, initial_sources = initial_report_text(stock_dir)
         tracking_text, tracking_sources = tracking_report_text(stock_dir)
+        thesis_source_text = initial_text or tracking_text
 
-        industry_result = ai_extract(initial_text, "industry_knowledge") if initial_text else {
-            "error": "No initial coverage report found.",
+        industry_result = ai_extract(thesis_source_text, "industry_knowledge") if thesis_source_text else {
+            "error": "No report text found for industry extraction.",
             "extracted": {},
         }
-        thesis_result = ai_extract(initial_text, "investment_thesis") if initial_text else {
-            "error": "No initial coverage report found.",
+        thesis_result = ai_extract(thesis_source_text, "investment_thesis") if thesis_source_text else {
+            "error": "No report text found for thesis extraction.",
             "extracted": {},
         }
         tracking_result = ai_extract(tracking_text, "tracking_data") if tracking_text else {
