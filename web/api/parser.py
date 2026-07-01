@@ -5,6 +5,16 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
+def extract_section(text: str, *headers: str) -> str:
+    """Return the body of the first matching section header (##/###/####)."""
+    for header in headers:
+        pattern = rf"(?m)^#+\s*(?:[\d.]+\s*)?{re.escape(header)}[^\n]*\n([\s\S]*?)(?=^#+\s|\Z)"
+        m = re.search(pattern, text, re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
+    return ""
+
+
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
 ANTHROPIC_MODEL = "claude-sonnet-4-20250514"
@@ -14,12 +24,25 @@ PROMPTS = {
     "industry_knowledge": """Extract industry knowledge base data from the report below.
 Return ONLY valid JSON with this shape:
 {
-  "industry": "industry name",
+  "industry": "industry name (Chinese)",
   "chain": [{"name": "", "tier": "upstream|midstream|downstream", "companies": "", "gross_margin": "", "barriers": ""}],
   "tam_cagr": {"market_size": "", "cagr": "", "forecast_year": ""},
   "financial_benchmarks": {"company name": {"revenue": "", "net_profit": "", "gross_margin": "", "pe": ""}}
 }
 Only extract data explicitly written in the report. Do not invent values.""",
+    "industry_comprehensive": """You are extracting a COMPLETE industry knowledge base entry from a Chinese A-share research report.
+Extract ALL content — do not summarize or omit. Return ONLY valid JSON:
+{
+  "industry": "行业名称",
+  "chain": [{"name": "", "tier": "upstream|midstream|downstream", "companies": "所有提及公司", "gross_margin": "", "barriers": "进入壁垒详述"}],
+  "tam_cagr": {"market_size": "", "cagr": "", "forecast_year": "", "source": "数据来源机构"},
+  "financial_benchmarks": {"公司名": {"revenue": "", "net_profit": "", "gross_margin": "", "roe": "", "pe": "", "pb": ""}},
+  "competitive_landscape": "竞争格局完整描述，含CR3/ROIC对比",
+  "key_risks": ["风险1", "风险2"],
+  "catalysts": ["催化剂1", "催化剂2"],
+  "policy_context": "相关政策背景"
+}
+Extract ALL companies, ALL financial metrics, ALL data points mentioned. Completeness > brevity.""",
     "investment_thesis": """Extract investment thesis data from the report below.
 Return ONLY valid JSON with this shape:
 {
@@ -33,6 +56,37 @@ Return ONLY valid JSON with this shape:
   },
   "key_assumptions": [{"assumption": "", "verification_status": ""}]
 }""",
+    "stock_thesis_complete": """You are extracting a COMPLETE investment logic entry for a Chinese A-share stock.
+Extract ALL bull/bear theses with their full reasoning chains. Return ONLY valid JSON:
+{
+  "bull_theses": [
+    {
+      "statement": "逻辑标题（一句话）",
+      "evidence": "支撑证据（完整数据和事实）",
+      "key_assumption": "该逻辑成立的关键假设",
+      "tracking_indicators": ["需要跟踪的具体指标1", "指标2"],
+      "invalidation_condition": "该逻辑失效的具体条件",
+      "status": "strengthened|maintained|weakened|invalidated"
+    }
+  ],
+  "bear_theses": [
+    {
+      "statement": "风险标题",
+      "evidence": "风险依据",
+      "trigger_condition": "触发条件（具体数值）",
+      "severity": "high|medium|low"
+    }
+  ],
+  "signals": {
+    "fundamental": {"direction": "", "strength": "", "score": 0},
+    "chip_flow": {"direction": "", "strength": "", "score": 0},
+    "technical": {"direction": "", "strength": "", "score": 0},
+    "sentiment": {"direction": "", "strength": "", "score": 0}
+  },
+  "key_assumptions": [{"assumption": "", "tracking_data": "", "verification_status": ""}],
+  "decisions": [{"date": "", "action": "", "rating": "", "rationale": ""}]
+}
+Extract EVERY bull thesis and bear thesis. Completeness is critical.""",
     "tracking_data": """Extract tracking indicators and events from the report below.
 Return ONLY valid JSON with this shape:
 {

@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "stock_key": "600879-航天电子",
+  "industry": "航天军工电子",
+  "sections": [
+    {
+      "source_file": "meeting-note.md",
+      "heading": "行业趋势：商业航天进入密集发射阶段",
+      "destination": "industry",
+      "knowledge_type": "行业趋势",
+      "action": "copy",
+      "reason": "可复用于商业航天产业链其他标的"
+    },
+    {
+      "source_file": "meeting-note.md",
+      "heading": "公司经营：订单节奏仍受型号验收影响",
+      "destination": "stock",
+      "knowledge_type": "公司经营",
+      "action": "copy",
+      "reason": "航天电子公司专属经营判断"
+    },
+    {
+      "source_file": "meeting-note.md",
+      "heading": "风险：利润率修复仍需验证",
+      "destination": "stock",
+      "knowledge_type": "风险",
+      "action": "copy",
+      "reason": "个股投资风险和后续跟踪重点"
+    },
+    {
+      "source_file": "meeting-note.md",
+      "heading": "QA记录",
+      "destination": "skip",
+      "knowledge_type": "流程记录",
+      "action": "skip",
+      "reason": "流程记录不属于长期知识沉淀"
+    }
+  ]
+}

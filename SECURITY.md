@@ -1,32 +1,40 @@
-﻿# Security Policy
+# Security Policy
 
 ## Supported Versions
 
 | Version | Supported |
 |---------|-----------|
-| latest | ✅ |
+| latest | Yes |
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please **DO NOT** open a public issue.
+Please do not open a public issue for security vulnerabilities.
 
-Instead, please report it privately via one of these channels:
-
-1. **GitHub Security Advisories**: Use the "Report a vulnerability" button on the [Security tab](https://github.com/jules385/ai-investment-agent/security)
-2. **Email**: Send details to [jules385@users.noreply.github.com]
+Use GitHub Security Advisories on the repository Security tab, or contact the maintainer via the GitHub profile email.
 
 Please include:
-- A detailed description of the vulnerability
+
+- A clear description of the vulnerability
 - Steps to reproduce
 - Potential impact
-- Any suggested fixes (if available)
+- Suggested fixes, if available
 
-We will respond within 48 hours and work toward a resolution within 30 days.
+## Sensitive Local Files
 
-## Security Considerations
+This project is designed for local Codex + MCP + Obsidian usage. Do not commit:
 
-This project connects to financial data APIs and stores API keys locally. Users should:
+- `.env`
+- `.mcp.json`
+- `.codex/`
+- API keys, tokens, cookies, or private credentials
+- personal Obsidian vault content under `obsidian-vault/`
+- real reports under `reports/stocks/`
+- generated daily reports under `reports/daily/`
+- portfolio files such as `持仓组合.md`, `白名单组合.md`, `黑名单组合.md`
+- archive plans that may contain private research notes
 
-1. Never commit `.claude/settings.json` or `.mcp.json` to version control (these are in `.gitignore`)
-2. Keep their API keys secure and rotate them periodically
-3. Review the [`.gitignore`](.gitignore) file to understand which files are excluded from version control
+Use `.mcp.json.template` for public MCP configuration examples.
+
+## Financial Data Disclaimer
+
+The system uses public or third-party financial data sources. Data may be delayed, incomplete, unavailable, or incorrect. Users should independently verify data before making any investment decision.

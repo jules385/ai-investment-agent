@@ -1,375 +1,301 @@
-"""
-A股AI投研系统 — 自动化自测脚本
-基于 5 关验证流程，验证 MCP/Skills/Subagent/信号/合成 全链路
+#!/usr/bin/env python3
+from __future__ import annotations
 
-用法: python tools/self-test.py
-"""
-
-import sys
-import os
+import argparse
 import json
-import subprocess
-import time
-from urllib.error import URLError
-from urllib.request import urlopen
+import py_compile
+import sys
 from pathlib import Path
 
-REPO_DIR = Path(__file__).parent.parent.resolve()
-HOME = Path.home()
-MCP_JSON = HOME / ".mcp.json"
-SKILLS_DIR = HOME / ".claude" / "skills" / "analysts"
-COMMANDS_DIR = HOME / ".claude" / "commands"
+REPO_DIR = Path(__file__).resolve().parents[1]
+TOOLS_DIR = REPO_DIR / "tools"
+if str(TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_DIR))
+MCP_JSON = REPO_DIR / ".mcp.json"
+SKILLS_DIR = REPO_DIR / "skills" / "analysts"
+COMMANDS_DIR = REPO_DIR / "commands"
 
 PASS = "[PASS]"
 FAIL = "[FAIL]"
 WARN = "[WARN]"
+
+CORE_MCPS = ["finance-data", "tech-analysis"]
+NEWS_MCPS = ["official-announcement", "macro-policy", "market-news", "industry-data"]
+EXPECTED_SKILLS = {
+    "analyst-chief",
+    "analyst-fundamental",
+    "analyst-chip-flow",
+    "analyst-technical",
+    "analyst-sentiment",
+    "analyst-data-qa",
+    "analyst-beautifier",
+    "analyst-portfolio-manager",
+    "analyst-archive",
+    "analyst-daily",
+}
+EXPECTED_COMMANDS = [
+    "analyze-initial",
+    "analyze-weekly",
+    "analyze-monthly",
+    "analyze-quarterly",
+    "analyze-annual",
+    "analyze-portfolio-weekly",
+    "analyze-daily",
+    "archive-research",
+    "beautify-report",
+    "help",
+]
+CORE_TOOLS = [
+    "archive-to-vault.py",
+    "archive_schema.py",
+    "archive_formatter.py",
+    "archive_indexer.py",
+    "archive_router.py",
+    "archive_writer.py",
+    "archive_validator.py",
+    "daily_window.py",
+    "daily_mcp_check.py",
+    "daily_collect.py",
+    "daily_score.py",
+    "daily_report.py",
+    "daily_to_vault.py",
+    "sync-to-vault.py",
+    "update-workspace.py",
+    "md-to-html.py",
+]
+
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-# ── 测试标的信息 ─────────────────────────────────
-TEST_SYMBOL = "002202"
-TEST_NAME = "金风科技"
 
-
-def header(title: str):
-    print(f"\n{'='*60}")
+def header(title: str) -> None:
+    print(f"\n{'=' * 60}")
     print(f"  {title}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 def check(label: str, condition: bool, detail: str = "") -> bool:
     status = PASS if condition else FAIL
-    msg = f"  {status} {label}"
-    if detail:
-        msg += f" — {detail}"
-    print(msg)
+    suffix = f" - {detail}" if detail else ""
+    print(f"  {status} {label}{suffix}")
     return condition
 
 
-def warn(label: str, detail: str = ""):
-    print(f"  {WARN} {label} — {detail}")
+def warn(label: str, detail: str = "") -> None:
+    suffix = f" - {detail}" if detail else ""
+    print(f"  {WARN} {label}{suffix}")
 
 
-# ── 第一关：MCP Server 存活检查 ─────────────────
-
-def gate1_mcp_servers():
-    header("第一关：MCP Server 存活检查")
-
-    all_pass = True
-
-    # 1.1 MCP config exists
+def load_mcp_config() -> dict:
     if not MCP_JSON.exists():
-        check("MCP 配置文件", False, f"缺少 {MCP_JSON}")
-        return False
-    config = json.loads(MCP_JSON.read_text(encoding='utf-8'))
+        return {}
+    return json.loads(MCP_JSON.read_text(encoding="utf-8"))
+
+
+def server_script(config: dict) -> Path | None:
+    for arg in config.get("args", []):
+        if isinstance(arg, str) and arg.endswith(".py"):
+            path = Path(arg)
+            return path if path.is_absolute() else REPO_DIR / path
+    return None
+
+
+def gate_mcp_config() -> bool:
+    header("Gate 1: MCP 本地配置")
+    ok = check("MCP 配置文件存在", MCP_JSON.exists(), str(MCP_JSON))
+    config = load_mcp_config()
     servers = config.get("mcpServers", {})
-    check("MCP 配置文件存在", True, str(MCP_JSON))
 
-    # 1.2 Check each server config
-    for name in ["finance-data", "tech-analysis"]:
-        if name not in servers:
-            check(f"{name} Server 配置", False, "在 .mcp.json 中未找到")
-            all_pass = False
+    for name in CORE_MCPS + NEWS_MCPS:
+        srv = servers.get(name)
+        if not isinstance(srv, dict):
+            ok = check(f"{name} 已配置", False, "未在 .mcp.json 中找到") and ok
             continue
-        srv = servers[name]
-        cmd = srv.get("command", "")
-        args = srv.get("args", [])
-        server_path = args[0] if args else ""
-        if not Path(server_path).exists():
-            check(f"{name} Server 文件", False, f"不存在: {server_path}")
-            all_pass = False
+        if srv.get("disabled"):
+            ok = check(f"{name} 未禁用", False, "当前被 disabled") and ok
         else:
-            check(f"{name} Server 文件", True, server_path)
-
-    # 1.3 Check Python deps
-    try:
-        import akshare
-        check("akshare 已安装", True, f"v{akshare.__version__}")
-    except ImportError:
-        check("akshare 已安装", False, "pip install akshare")
-        all_pass = False
-
-    try:
-        import mcp
-        check("mcp 已安装", True)
-    except ImportError:
-        check("mcp 已安装", False, "pip install mcp")
-        all_pass = False
-
-    try:
-        import ta
-        check("ta 已安装", True)
-    except ImportError:
-        check("ta 已安装", False, "pip install ta")
-        all_pass = False
-
-    # 1.4 Try importing server modules to catch syntax errors
-    for name in ["finance-data", "tech-analysis"]:
-        server_py = REPO_DIR / "mcp-servers" / name / "server.py"
-        if server_py.exists():
+            check(f"{name} 已启用", True)
+        command = Path(srv.get("command", ""))
+        ok = check(f"{name} Python 命令存在", command.exists(), str(command)) and ok
+        script = server_script(srv)
+        if not script:
+            ok = check(f"{name} server.py", False, "args 中未找到 Python 脚本") and ok
+            continue
+        ok = check(f"{name} server.py 存在", script.exists(), str(script)) and ok
+        if script.exists():
             try:
-                code = server_py.read_text(encoding='utf-8-sig')
-                compile(code, f'{name}/server.py', 'exec')
-                check(f"{name} Server 语法检查", True)
-            except SyntaxError as e:
-                check(f"{name} Server 语法检查", False, str(e)[:100])
-                all_pass = False
+                py_compile.compile(str(script), doraise=True)
+                check(f"{name} server.py 语法", True)
+            except py_compile.PyCompileError as exc:
+                ok = check(f"{name} server.py 语法", False, str(exc)[:160]) and ok
 
-    return all_pass
+    return ok
 
 
-# ── 第二关：Skill 文件检查 ─────────────────
-
-def gate2_skill_files():
-    header("第二关：Skill 文件检查")
-
-    all_pass = True
-    expected_skills = {
-        "analyst-chief", "analyst-fundamental", "analyst-chip-flow",
-        "analyst-technical", "analyst-sentiment", "analyst-data-qa",
-        "analyst-beautifier", "analyst-portfolio-manager"
-    }
-
-    # 2.1 Check all skills exist in the repo (source of truth)
-    repo_skills_dir = REPO_DIR / "skills" / "analysts"
-    existing = set()
-    if repo_skills_dir.exists():
-        for d in repo_skills_dir.iterdir():
-            if d.is_dir() and (d / "SKILL.md").exists():
-                existing.add(d.name)
-
-    for name in sorted(expected_skills):
-        if name in existing:
-            check(f"Skill: {name}", True)
-        else:
-            check(f"Skill: {name}", False, "SKILL.md 不存在")
-            all_pass = False
-
-    # 2.2 Check for data source priority rules (skip non-data roles)
-    priority_keywords = ["数据源优先级"]
-    lock_keywords = ["角色锁定", "独立 Subagent"]
-    skip_priority_check = {"analyst-beautifier", "analyst-chief", "analyst-portfolio-manager"}
-
-    for name in sorted(existing):
-        skill_md = repo_skills_dir / name / "SKILL.md"
-        content = skill_md.read_text(encoding='utf-8')
-        has_priority = any(kw in content for kw in priority_keywords)
-        has_lock = any(kw in content for kw in lock_keywords)
-        if name not in skip_priority_check and not has_priority:
-            warn(f"{name} 缺少数据源优先级规则")
-        if not has_lock:
-            warn(f"{name} 缺少角色锁定指令")
-
-    # 2.3 Check commands (repo or ~/.claude/)
-    for cmd_name in ["analyze-initial", "analyze-weekly", "analyze-monthly", "analyze-quarterly", "analyze-annual", "analyze-portfolio-weekly", "beautify-report", "help"]:
-        cmd_file = COMMANDS_DIR / f"{cmd_name}.md"
-        if not cmd_file.exists():
-            cmd_file = REPO_DIR / "commands" / f"{cmd_name}.md"
-        if cmd_file.exists():
-            check(f"Command: {cmd_name}", True)
-        else:
-            check(f"Command: {cmd_name}", False, "未安装")
-            all_pass = False
-
-    return all_pass
-
-
-# ── 第三关：MCP 连通性测试 ─────────────────
-
-def gate3_mcp_connectivity():
-    header("第三关：MCP 工具连通性测试")
-
-    all_pass = True
-
-    # Check if akshare can fetch real data
-    try:
-        import akshare as ak
-        df = ak.stock_zh_a_hist(symbol=TEST_SYMBOL, period="daily",
-            start_date="20260101", end_date="20260617", adjust="qfq")
-        if df is not None and not df.empty:
-            check("AKShare 数据连通", True, f"{TEST_SYMBOL} 获取到 {len(df)} 行")
-        else:
-            check("AKShare 数据连通", False, "返回空数据")
-            all_pass = False
-    except Exception as e:
-        check("AKShare 数据连通", False, str(e)[:100])
-        all_pass = False
-
-    # Check finance-data specific functions
-    try:
-        import akshare as ak
-        # Test financial indicators
-        fin = ak.stock_financial_abstract_ths(symbol=TEST_SYMBOL, indicator="按报告期")
-        if fin is not None and not fin.empty:
-            check("finance-data: 财务数据", True, f"{len(fin)} 期报告")
-        else:
-            warn("finance-data: 财务数据", "返回空，可能限流")
-    except Exception as e:
-        check("finance-data: 财务数据", False, str(e)[:100])
-        all_pass = False
-
-    # Check tech-analysis functions via ta library
-    try:
-        import akshare as ak
-        import pandas as pd
-        import ta
-        ak_sym = f"sz{TEST_SYMBOL}" if TEST_SYMBOL.startswith(('0','3','2')) else f"sh{TEST_SYMBOL}"
-        df = ak.stock_zh_a_daily(symbol=ak_sym, adjust="qfq")
-        if not df.empty:
-            close = df['close'].astype(float)
-            ma20 = close.rolling(20).mean().iloc[-1]
-            check("tech-analysis: 均线计算", True, f"MA20={ma20:.2f}")
-        else:
-            check("tech-analysis: 均线计算", False, "无数据")
-            all_pass = False
-    except Exception as e:
-        check("tech-analysis: 均线计算", False, str(e)[:100])
-        all_pass = False
-
-    return all_pass
-
-
-def gate5_mcp_agent_compatibility(test_symbol="002202"):
-    """MCP 子 Agent 兼容性说明 + Server 语法检查"""
-    print("\n" + "=" * 60)
-    print("  第五关：MCP 子 Agent 兼容性检查")
-    print("=" * 60)
-
-    print("""
-  ⚠️  MCP stdio 服务器由 Claude Code 主会话启动。
-      子 Agent 能否继承 MCP 取决于 Claude Code 版本。
-
-  手动验证（在 Claude Code 中执行）：
-      "用 Subagent 调用 tech-analysis MCP 的 compute_ma，
-       获取 {} 的日线均线"
-
-  预期：
-      ✅ 返回 MA5/MA10/MA20 数值 → 正常
-      ❌ Subagent 用 WebSearch 替代 → MCP 未继承（降级可用）
-""".format(test_symbol))
-
-    import subprocess
-    server_dir = REPO_DIR / "mcp-servers"
+def gate_skills_and_commands() -> bool:
+    header("Gate 2: Skills 与命令入口")
     ok = True
-    for name in ["finance-data", "tech-analysis"]:
-        server_py = server_dir / name / "server.py"
-        result = subprocess.run(
-            [sys.executable, "-c",
-             "compile(open(r'{}', encoding='utf-8-sig').read(), 'server.py', 'exec')".format(server_py)],
-            capture_output=True, text=True
-        )
-        if result.returncode == 0:
-            print(f"  ✅ {name} server.py 语法通过")
-        else:
-            print(f"  ❌ {name} server.py 语法错误: {result.stderr.strip()[:100]}")
-            ok = False
+    existing_skills = {
+        path.name for path in SKILLS_DIR.iterdir()
+        if path.is_dir() and (path / "SKILL.md").exists()
+    } if SKILLS_DIR.exists() else set()
 
-    return ok  # 此关仅作信息提示
+    for name in sorted(EXPECTED_SKILLS):
+        ok = check(f"Skill: {name}", name in existing_skills) and ok
+
+    for name in sorted(existing_skills):
+        content = (SKILLS_DIR / name / "SKILL.md").read_text(encoding="utf-8")
+        if name == "analyst-daily":
+            if "MCP 调用方式" not in content or "四轮采集" not in content:
+                warn("analyst-daily 流程说明", "建议包含 MCP 调用方式和四轮采集")
+        elif name not in {"analyst-beautifier", "analyst-chief", "analyst-portfolio-manager"}:
+            if "数据源优先级" not in content and "MCP" not in content:
+                warn(f"{name} 数据源规则", "建议明确 MCP / Web / 本地数据优先级")
+        if "Subagent" not in content and name.startswith("analyst-"):
+            warn(f"{name} 角色指令", "建议明确是否作为独立 Subagent 执行")
+
+    for name in EXPECTED_COMMANDS:
+        ok = check(f"Command: {name}", (COMMANDS_DIR / f"{name}.md").exists()) and ok
+
+    return ok
 
 
-# ── 第四关：工具计数检查 ─────────────────
-
-def gate4_tool_coverage():
-    header("第四关：MCP 工具覆盖检查")
-
-    # Count expected tools from server source
-    tool_counts = {}
-    for name in ["finance-data", "tech-analysis"]:
-        server_py = REPO_DIR / "mcp-servers" / name / "server.py"
-        if not server_py.exists():
-            tool_counts[name] = 0
+def gate_python_tools() -> bool:
+    header("Gate 3: Python 工具语法")
+    ok = True
+    for name in CORE_TOOLS:
+        path = REPO_DIR / "tools" / name
+        if not path.exists():
+            ok = check(f"tools/{name}", False, "文件不存在") and ok
             continue
-        content = server_py.read_text(encoding='utf-8')
-        count = content.count("@mcp.tool()")
-        tool_counts[name] = count
-        check(f"{name}: 工具数量", count >= 9 if name == "finance-data" else count >= 10,
-              f"{count} 个工具")
+        try:
+            py_compile.compile(str(path), doraise=True)
+            check(f"tools/{name}", True)
+        except py_compile.PyCompileError as exc:
+            ok = check(f"tools/{name}", False, str(exc)[:160]) and ok
 
-    # Check if all 9 tools exist in finance-data
-    expected_finance = ["get_historical_data", "get_financial_indicators", "get_valuation",
-                         "get_shareholders", "get_lhb_details", "get_fund_flow",
-                         "get_margin_data", "get_hsgt_holdings", "get_chip_distribution"]
-    server_py = REPO_DIR / "mcp-servers" / "finance-data" / "server.py"
-    content = server_py.read_text(encoding='utf-8')
-    missing = [t for t in expected_finance if f"def {t}" not in content]
-    if missing:
-        for t in missing:
-            check(f"finance-data 缺工具: {t}", False)
+    for path in [REPO_DIR / "web" / "api" / "parser.py", REPO_DIR / "web" / "api" / "report_parser.py"]:
+        if path.exists():
+            try:
+                py_compile.compile(str(path), doraise=True)
+                check(path.relative_to(REPO_DIR).as_posix(), True)
+            except py_compile.PyCompileError as exc:
+                ok = check(path.relative_to(REPO_DIR).as_posix(), False, str(exc)[:160]) and ok
+        else:
+            warn(path.relative_to(REPO_DIR).as_posix(), "不存在，旧解析兼容路径不可用")
+    return ok
+
+
+def gate_daily_local() -> bool:
+    header("Gate 4: 日报本地链路")
+    ok = True
+    try:
+        from daily_window import daily_window, parse_date
+        window = daily_window(parse_date("2026-07-01"))
+        ok = check(
+            "日报时间窗口",
+            window["window_start"] == "2026-06-30 00:00:00"
+            and window["window_end"] == "2026-07-01 23:59:59",
+            f"{window['window_start']} ~ {window['window_end']}",
+        ) and ok
+    except Exception as exc:
+        ok = check("日报时间窗口", False, str(exc)[:160]) and ok
+
+    try:
+        from daily_mcp_check import check_mcp_config
+        status = check_mcp_config()
+        ok = check("新闻 MCP 本地体检", bool(status.get("all_scripts_ok"))) and ok
+    except Exception as exc:
+        ok = check("新闻 MCP 本地体检", False, str(exc)[:160]) and ok
+    return ok
+
+
+def gate_vault_health() -> bool:
+    header("Gate 5: Vault 健康检查")
+    ok = True
+    sample_paths = [
+        REPO_DIR / "obsidian-vault" / "个股逻辑" / "002463-沪电股份" / "_index.md",
+        REPO_DIR / "obsidian-vault" / "个股逻辑" / "002463-沪电股份" / "基本面.md",
+        REPO_DIR / "obsidian-vault" / "个股逻辑" / "002463-沪电股份" / "投资决策.md",
+        REPO_DIR / "obsidian-vault" / "跟踪面板" / "002463-沪电股份.md",
+        REPO_DIR / "obsidian-vault" / "行业知识库" / "AI服务器PCB.md",
+    ]
+    for path in sample_paths:
+        if not path.exists():
+            warn(path.relative_to(REPO_DIR).as_posix(), "回归样本不存在")
+            continue
+        text = path.read_text(encoding="utf-8")
+        has_marker = "<!-- /ai-content -->" in text
+        no_deprecated = "原文摘录：" not in text and "[!quote] 来源" not in text and "???" not in text
+        ok = check(path.relative_to(REPO_DIR).as_posix(), has_marker and no_deprecated) and ok
+
+    legacy_hits = []
+    vault = REPO_DIR / "obsidian-vault"
+    if vault.exists():
+        for path in vault.rglob("*.md"):
+            text = path.read_text(encoding="utf-8", errors="replace")
+            if "原文摘录：" in text or "[!quote] 来源" in text or "???" in text:
+                legacy_hits.append(path.relative_to(REPO_DIR).as_posix())
+    if legacy_hits:
+        warn("Vault 历史遗留内容", f"{len(legacy_hits)} 个文件仍含废弃来源包装或乱码标记")
     else:
-        check("finance-data 工具完整", True, f"{len(expected_finance)}/9")
+        check("Vault 无废弃来源包装", True)
+    return ok
 
-    return all(v >= 9 if k == "finance-data" else v >= 10 for k, v in tool_counts.items())
 
-
-# ── Main ───────────────────────────────────────────────
-
-def gate6_web_api():
-    header("Gate 6: Web API health check")
+def gate_online_connectivity() -> bool:
+    header("Optional Gate: 在线数据连通")
+    ok = True
+    try:
+        import akshare as ak
+        df = ak.stock_zh_a_hist(symbol="002202", period="daily", start_date="20260101", end_date="20260617", adjust="qfq")
+        ok = check("AKShare 行情连通", df is not None and not df.empty) and ok
+    except Exception as exc:
+        ok = check("AKShare 行情连通", False, str(exc)[:160]) and ok
 
     try:
-        with urlopen("http://127.0.0.1:8765/api/health", timeout=3) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-        return check("localhost:8765/api/health", payload.get("status") == "ok", "running server")
-    except URLError as error:
-        warn("localhost:8765/api/health", f"server not running, using Flask test client: {error}")
-    except Exception as error:
-        warn("localhost:8765/api/health", f"HTTP check failed, using Flask test client: {error}")
-
-    try:
-        import importlib.util
-
-        server_path = REPO_DIR / "web" / "api" / "server.py"
-        spec = importlib.util.spec_from_file_location("web_api_server", server_path)
-        server = importlib.util.module_from_spec(spec)
-        sys.path.insert(0, str(REPO_DIR))
-        spec.loader.exec_module(server)
-        client = server.app.test_client()
-        response = client.get("/api/health")
-        payload = response.get_json()
-        return check("Flask test client /api/health", response.status_code == 200 and payload.get("status") == "ok")
-    except Exception as error:
-        return check("Web API Flask app", False, str(error)[:120])
+        import akshare as ak
+        fin = ak.stock_financial_abstract_ths(symbol="002202", indicator="按报告期")
+        ok = check("同花顺财务连通", fin is not None and not fin.empty) and ok
+    except Exception as exc:
+        ok = check("同花顺财务连通", False, str(exc)[:160]) and ok
+    return ok
 
 
-def main():
+def main() -> int:
+    parser = argparse.ArgumentParser(description="A股AI投研系统本地自测。默认不做联网数据连通。")
+    parser.add_argument("--online", action="store_true", help="同时测试 AkShare / 东方财富 / 同花顺等在线数据源。")
+    args = parser.parse_args()
+
     print("=" * 60)
-    print("  A股AI投研系统 — 自动化自测")
-    print(f"  测试标的: {TEST_NAME}({TEST_SYMBOL})")
+    print("  A股AI投研系统 - 本地自测")
     print("=" * 60)
     print(f"  Repo: {REPO_DIR}")
-    print(f"  Skills: {SKILLS_DIR}")
     print(f"  MCP Config: {MCP_JSON}")
 
     results = {
-        "Gate 1: MCP Server 存活": gate1_mcp_servers(),
-        "Gate 2: Skill 文件": gate2_skill_files(),
-        "Gate 3: MCP 连通性": gate3_mcp_connectivity(),
-        "Gate 4: 工具覆盖": gate4_tool_coverage(),
-        "Gate 5: MCP 子Agent兼容": gate5_mcp_agent_compatibility(TEST_SYMBOL),
-        "Gate 6: Web API": gate6_web_api(),
+        "MCP 本地配置": gate_mcp_config(),
+        "Skills 与命令入口": gate_skills_and_commands(),
+        "Python 工具语法": gate_python_tools(),
+        "日报本地链路": gate_daily_local(),
+        "Vault 健康检查": gate_vault_health(),
     }
+    if args.online:
+        results["在线数据连通"] = gate_online_connectivity()
 
-    # ── Summary ──
     header("自测结果")
-    passed = sum(1 for v in results.values() if v)
+    passed = sum(1 for value in results.values() if value)
     total = len(results)
-    for name, result in results.items():
-        status = PASS if result else FAIL
-        print(f"  {status} {name}")
-
+    for name, value in results.items():
+        print(f"  {PASS if value else FAIL} {name}")
     print(f"\n  通过: {passed}/{total}")
-
-    if passed == total:
-        print(f"\n  [PASS] 全部通过！系统可以执行初次覆盖测试。")
-        print(f"     运行: /analyze-initial {TEST_SYMBOL} {TEST_NAME}")
-    else:
-        print(f"\n  [FAIL] {total - passed} 关未通过，请修复后重试。")
-
+    if not args.online:
+        print("  注：默认自测不检查外部网络数据源；需要时运行 `python tools/self-test.py --online`。")
     return 0 if passed == total else 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

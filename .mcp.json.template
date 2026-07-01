@@ -10,6 +10,26 @@
       "command": "{{PYTHON_PATH}}",
       "args": ["{{REPO_PATH}}/mcp-servers/tech-analysis/server.py"]
     },
+    "official-announcement": {
+      "type": "stdio",
+      "command": "{{PYTHON_PATH}}",
+      "args": ["{{REPO_PATH}}/mcp-servers/official-announcement/server.py"]
+    },
+    "macro-policy": {
+      "type": "stdio",
+      "command": "{{PYTHON_PATH}}",
+      "args": ["{{REPO_PATH}}/mcp-servers/macro-policy/server.py"]
+    },
+    "market-news": {
+      "type": "stdio",
+      "command": "{{PYTHON_PATH}}",
+      "args": ["{{REPO_PATH}}/mcp-servers/market-news/server.py"]
+    },
+    "industry-data": {
+      "type": "stdio",
+      "command": "{{PYTHON_PATH}}",
+      "args": ["{{REPO_PATH}}/mcp-servers/industry-data/server.py"]
+    },
     "akshare": {
       "type": "stdio",
       "command": "{{PYTHON_PATH}}",
