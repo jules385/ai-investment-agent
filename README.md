@@ -1,4 +1,4 @@
-# A股AI投研系统
+# A股分析师AI工作平台
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.4.1-blue.svg)](VERSION)
@@ -19,13 +19,13 @@ python tools/self-test.py
 在 Codex 中发起投研：
 
 ```text
-/analyze-initial 002463 沪电股份
-/analyze-weekly 002463
-/analyze-monthly 002463
-/analyze-quarterly 002463
-/analyze-annual 002463
+/analyze-initial xx股份
+/analyze-weekly xx股份
+/analyze-monthly xx股份
+/analyze-quarterly xx股份
+/analyze-annual xx股份
 /analyze-daily
-/beautify-report 002463-沪电股份
+/beautify-report xx股份
 ```
 
 研究成果入库使用当前唯一主线：
