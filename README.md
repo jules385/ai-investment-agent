@@ -1,4 +1,4 @@
-# A股AI投研系统
+# A股分析师AI工作平台
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](VERSION)
