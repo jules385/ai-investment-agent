@@ -46,13 +46,13 @@ pip install -r requirements.txt
 4. 在 Codex 中发起分析：
 
 ```text
-/analyze-initial 002463 沪电股份
-/analyze-weekly 002463
-/analyze-monthly 002463
-/analyze-quarterly 002463
-/analyze-annual 002463
+/analyze-initial xx股份
+/analyze-weekly xx股份
+/analyze-monthly xx股份
+/analyze-quarterly xx股份
+/analyze-annual xx股份
 /analyze-daily
-/beautify-report 002463-沪电股份
+/beautify-report xx股份
 ```
 
 5. 同步 Obsidian：
